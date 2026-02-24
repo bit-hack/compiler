@@ -6,7 +6,7 @@
 typedef enum {
 
   TOK_UNKNOWN,
-
+  TOK_SEMICOLON,
   TOK_LPAREN,
   TOK_RPAREN,
   TOK_LBRACE,
@@ -42,6 +42,7 @@ lex_t lex;
 
 #define error(...) { \
   printf(__VA_ARGS__); \
+  printf("\n"); \
   exit(1); \
 }
 
@@ -141,7 +142,7 @@ static bool lex_int_literal(token_t *out) {
   if (*p == '-') {
     ++p;
   }
-  for (;lex_is_alpha(*p); ++p);
+  for (; lex_is_numeric(*p); ++p);
   if (lex.ptr == p) {
     return false;
   }
@@ -158,13 +159,15 @@ static void lex_peek(token_t *out) {
   out->end   = NULL;
 
   switch (*lex.ptr) {
-  case '\0': out->type = TOK_EOF;    break;
-  case '(':  out->type = TOK_LPAREN; break;
-  case ')':  out->type = TOK_RPAREN; break;
-  case '{':  out->type = TOK_LBRACE; break;
-  case '}':  out->type = TOK_RBRACE; break;
-  case 'v': if (lex_match("void")) { out->type = TOK_VOID; } break;
-  case 'i': if (lex_match("int"))  { out->type = TOK_INT;  } break;
+  case '\0': out->type = TOK_EOF;       break;
+  case ';':  out->type = TOK_SEMICOLON; break;
+  case '(':  out->type = TOK_LPAREN;    break;
+  case ')':  out->type = TOK_RPAREN;    break;
+  case '{':  out->type = TOK_LBRACE;    break;
+  case '}':  out->type = TOK_RBRACE;    break;
+  case 'v': if (lex_match("void"))   { out->type = TOK_VOID;   } break;
+  case 'i': if (lex_match("int"))    { out->type = TOK_INT;    } break;
+  case 'r': if (lex_match("return")) { out->type = TOK_RETURN; } break;
   }
 
   if (out->type == TOK_UNKNOWN) {
