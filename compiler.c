@@ -15,6 +15,7 @@ typedef enum {
   TOK_INT_LIT,
   TOK_VOID,
   TOK_RETURN,
+  TOK_COMMA,
   TOK_EOF,
 } token_type_t;
 
@@ -195,7 +196,7 @@ static void lex_pop(token_t *out) {
 
 static void lex_peek(token_t *out) {
   const lex_t save = lex;
-  lex_peek(out);
+  lex_pop(out);
   lex = save;
 }
 
@@ -208,6 +209,10 @@ static void lex_expect(token_type_t type) {
 }
 
 static bool lex_found(token_type_t type, token_t *out) {
+
+  token_t temp;
+  out = out ? out : &temp;
+
   lex_peek(out);
   if (out->type = type) {
     lex_pop(out);
@@ -226,8 +231,68 @@ static bool tok_is_type(token_type_t t) {
   }
 }
 
-static bool parse() {
-  return false;
+static void parse_expr(void) {
+
+}
+
+static void parse_stmt_return(void) {
+
+  if (lex_found(TOK_SEMICOLON, NULL)) {
+    return;
+  }
+
+  parse_expr();
+}
+
+static void parse_stmt(void) {
+
+  token_t la;
+  lex_pop(&la);
+
+  if (la.type == TOK_RETURN) {
+    parse_stmt_return();
+    return;
+  }
+}
+
+static void parse_func(token_t *type, token_t *ident) {
+
+  // parse arguments
+  if (!lex_found(TOK_RPAREN, NULL)) {
+    do {
+
+      token_t arg_type;
+      lex_pop(&arg_type);
+
+      token_t arg_ident;
+      lex_pop(&arg_ident);
+
+    } while (lex_found(TOK_COMMA, NULL));
+  }
+  lex_expect(TOK_RPAREN);
+
+  // parse function body
+  lex_expect(TOK_LBRACE);
+  while (!lex_found(TOK_RBRACE, NULL)) {
+
+    parse_stmt();
+  }
+}
+
+static void parse(void) {
+
+  token_t token;
+  while (!lex_found(TOK_EOF, &token)) {
+
+    token_t type;
+    lex_pop(&type);
+
+    token_t ident;
+    lex_pop(&type);
+
+    lex_expect(TOK_LPAREN);
+    parse_func(&type, &ident);
+  }
 }
 
 int main(int argc, char **args) {
@@ -239,17 +304,7 @@ int main(int argc, char **args) {
 
   lex_init(args[1]);
 
-  token_t out = { 0 };
-  for (;;) {
-
-    lex_pop(&out);
-    if (out.type == TOK_EOF) {
-      break;
-    }
-
-    const int size = out.end - out.start;
-    printf("%u %.*s\n", out.type, size, out.start);
-  }
+  parse();
 
   return 0;
 }
