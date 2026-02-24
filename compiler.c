@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 typedef enum {
-
   TOK_UNKNOWN,
   TOK_SEMICOLON,
   TOK_LPAREN,
@@ -40,8 +39,8 @@ typedef struct {
 
 lex_t lex;
 
-#define error(...) { \
-  printf(__VA_ARGS__); \
+#define ERROR(...) { \
+  printf("Error: " __VA_ARGS__); \
   printf("\n"); \
   exit(1); \
 }
@@ -80,6 +79,9 @@ static bool lex_init(const char *file) {
 static void lex_skip_whitespace(void) {
   const char *p = lex.ptr;
   for (;*p; ++p) {
+
+    // TODO: handle comments...
+
     switch (*p) {
     case '\n':
       lex.line_num++;
@@ -139,9 +141,6 @@ static bool lex_identifier(token_t *out) {
 
 static bool lex_int_literal(token_t *out) {
   const char *p = lex.ptr;
-  if (*p == '-') {
-    ++p;
-  }
   for (; lex_is_numeric(*p); ++p);
   if (lex.ptr == p) {
     return false;
@@ -151,13 +150,17 @@ static bool lex_int_literal(token_t *out) {
   return true;
 }
 
-static void lex_peek(token_t *out) {
+static void lex_pop(token_t *out) {
+
   lex_skip_whitespace();
+
+  // prepare outgoing token
   out->type  = TOK_UNKNOWN;
   out->line  = lex.line_num;
   out->start = lex.ptr;
   out->end   = NULL;
 
+  // first stage simple classifier
   switch (*lex.ptr) {
   case '\0': out->type = TOK_EOF;       break;
   case ';':  out->type = TOK_SEMICOLON; break;
@@ -170,39 +173,44 @@ static void lex_peek(token_t *out) {
   case 'r': if (lex_match("return")) { out->type = TOK_RETURN; } break;
   }
 
+  // second stage classifier
   if (out->type == TOK_UNKNOWN) {
     do {
       if (lex_identifier(out))  { out->type = TOK_IDENT;   break; }
       if (lex_int_literal(out)) { out->type = TOK_INT_LIT; break; }
 
-      error("unknown token");
+      ERROR("unknown token on linr %u", lex.line_num);
 
     } while (0);
   }
 
-  out->end = lex.ptr;
+  // fixup for one character tokens
   if (lex.ptr == out->start) {
-    out->end = ++lex.ptr;
+    ++lex.ptr;
   }
+
+  // fill in token end
+  out->end = lex.ptr;
 }
 
-static void lex_pop(token_t *out) {
+static void lex_peek(token_t *out) {
+  const lex_t save = lex;
   lex_peek(out);
-  lex.ptr = out->end;
+  lex = save;
 }
 
 static void lex_expect(token_type_t type) {
   token_t t;
   lex_pop(&t);
   if (t.type != type) {
-    // ERROR
+    ERROR("expected token '%u'", type);
   }
 }
 
 static bool lex_found(token_type_t type, token_t *out) {
   lex_peek(out);
-  if (out->type == type) {
-    lex.ptr  = out->end;
+  if (out->type = type) {
+    lex_pop(out);
     return true;
   }
   return false;
@@ -226,19 +234,20 @@ int main(int argc, char **args) {
 
   if (argc <= 1) {
     printf("usage: %s <file.c>\n", args[0]);
-    return 1;
+    return 0;
   }
 
   lex_init(args[1]);
 
   token_t out = { 0 };
   for (;;) {
+
     lex_pop(&out);
     if (out.type == TOK_EOF) {
       break;
     }
 
-    int size = out.end - out.start;
+    const int size = out.end - out.start;
     printf("%u %.*s\n", out.type, size, out.start);
   }
 
