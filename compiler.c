@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define TRACE(FUNC) { printf("%s\n", FUNC); }
+
 typedef enum {
   TOK_UNKNOWN,
   TOK_SEMICOLON,
@@ -16,6 +18,10 @@ typedef enum {
   TOK_VOID,
   TOK_RETURN,
   TOK_COMMA,
+  TOK_ASSIGN,
+  TOK_ADD,
+  TOK_SUB,
+  TOK_MUL,
   TOK_EOF,
 } token_type_t;
 
@@ -41,10 +47,13 @@ typedef struct {
 lex_t lex;
 
 #define ERROR(...) { \
-  printf("Error: " __VA_ARGS__); \
+  printf("Error, line %u: ", lex.line_num); \
+  printf(__VA_ARGS__); \
   printf("\n"); \
   exit(1); \
 }
+
+static void parse_expr(int minPrec);
 
 static bool lex_init(const char *file) {
 
@@ -169,6 +178,10 @@ static void lex_pop(token_t *out) {
   case ')':  out->type = TOK_RPAREN;    break;
   case '{':  out->type = TOK_LBRACE;    break;
   case '}':  out->type = TOK_RBRACE;    break;
+  case '=':  out->type = TOK_ASSIGN;    break;
+  case '+':  out->type = TOK_ADD;       break;
+  case '-':  out->type = TOK_SUB;       break;
+  case '*':  out->type = TOK_MUL;       break;
   case 'v': if (lex_match("void"))   { out->type = TOK_VOID;   } break;
   case 'i': if (lex_match("int"))    { out->type = TOK_INT;    } break;
   case 'r': if (lex_match("return")) { out->type = TOK_RETURN; } break;
@@ -192,6 +205,11 @@ static void lex_pop(token_t *out) {
 
   // fill in token end
   out->end = lex.ptr;
+
+#if 1
+  const int size = out->end - out->start;
+  printf("<%.*s>\n", size, out->start);
+#endif
 }
 
 static void lex_peek(token_t *out) {
@@ -214,15 +232,15 @@ static bool lex_found(token_type_t type, token_t *out) {
   out = out ? out : &temp;
 
   lex_peek(out);
-  if (out->type = type) {
+  if (out->type == type) {
     lex_pop(out);
     return true;
   }
   return false;
 }
 
-static bool tok_is_type(token_type_t t) {
-  switch (t) {
+static bool tok_is_type(token_t *t) {
+  switch (t->type) {
   case TOK_VOID:
   case TOK_INT:
     return true;
@@ -231,31 +249,133 @@ static bool tok_is_type(token_type_t t) {
   }
 }
 
-static void parse_expr(void) {
+static bool tok_is(token_t *t, token_type_t type) {
+  return t->type == type;
+}
 
+static bool tok_is_operator(token_t *t) {
+  switch (t->type) {
+  case TOK_ADD:
+  case TOK_SUB:
+  case TOK_MUL:
+  case TOK_ASSIGN:
+    return true;
+  default:
+    return false;
+  }
+}
+
+static void parse_expr_primary(void) {
+  TRACE(__func__);
+
+  token_t prim;
+  lex_pop(&prim);
+
+  // parenthesized expression
+  if (tok_is(&prim, TOK_LPAREN)) {
+    parse_expr(/*minPrec=*/0);
+    lex_expect(TOK_RPAREN);
+    return;
+  }
+
+  if (tok_is(&prim, TOK_IDENT)) {
+    return;
+  }
+
+  if (tok_is(&prim, TOK_INT_LIT)) {
+    return;
+  }
+
+  ERROR("Primary expression expected");
+}
+
+static int tok_precedence(token_t *t) {
+  switch (t->type) {
+  case TOK_ASSIGN:
+    return 1;
+  case TOK_ADD:
+  case TOK_SUB:
+    return 8;
+  case TOK_MUL:
+//case TOK_MOD:
+//case TOK_DIV:
+    return 9;
+  default:
+    ERROR("Internal error");
+  }
+}
+
+static bool parse_check_precedence(token_t *tok, int minPrec) {
+  return tok_precedence(tok) <= minPrec;
+}
+
+static void parse_expr(int minPrec) {
+  TRACE(__func__);
+
+  // lhs
+  parse_expr_primary();
+
+  for (;;) {
+
+    // look for an operator
+    token_t op;
+    lex_peek(&op);
+    if (!tok_is_operator(&op)) {
+      break;
+    }
+
+    // if our found operator binds less tightly than a prior one stop.
+    if (parse_check_precedence(&op, minPrec)) {
+      break;
+    }
+
+    // pop the operator
+    lex_pop(&op);
+
+    // rhs
+    parse_expr(tok_precedence(&op));
+  }
 }
 
 static void parse_stmt_return(void) {
+  TRACE(__func__);
 
   if (lex_found(TOK_SEMICOLON, NULL)) {
     return;
   }
 
-  parse_expr();
+  parse_expr(/*minPrec=*/0);
+  lex_expect(TOK_SEMICOLON);
+}
+
+static void parse_stmt_local_decl(void) {
+
 }
 
 static void parse_stmt(void) {
+  TRACE(__func__);
 
   token_t la;
-  lex_pop(&la);
+  lex_peek(&la);
 
-  if (la.type == TOK_RETURN) {
+  if (tok_is_type(&la)) {
+    parse_stmt_local_decl();
+    return;
+  }
+
+  if (tok_is(&la, TOK_RETURN)) {
+    lex_pop(&la);
     parse_stmt_return();
     return;
   }
+
+  // fallback to trying to parse an expression
+  parse_expr(/*minPrec=*/0);
+  lex_expect(TOK_SEMICOLON);
 }
 
 static void parse_func(token_t *type, token_t *ident) {
+  TRACE(__func__);
 
   // parse arguments
   if (!lex_found(TOK_RPAREN, NULL)) {
@@ -263,6 +383,9 @@ static void parse_func(token_t *type, token_t *ident) {
 
       token_t arg_type;
       lex_pop(&arg_type);
+      if (tok_is(&arg_type, TOK_VOID)) {
+        break;
+      }
 
       token_t arg_ident;
       lex_pop(&arg_ident);
@@ -280,9 +403,11 @@ static void parse_func(token_t *type, token_t *ident) {
 }
 
 static void parse(void) {
+  TRACE(__func__);
 
   token_t token;
   while (!lex_found(TOK_EOF, &token)) {
+    TRACE(__func__);
 
     token_t type;
     lex_pop(&type);
