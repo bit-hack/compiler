@@ -5,6 +5,13 @@
 
 #define TRACE(FUNC) { printf("%s\n", FUNC); }
 
+#define ERROR(...) { \
+  printf("Error, line %u: ", lex.line_num); \
+  printf(__VA_ARGS__); \
+  printf("\n"); \
+  exit(1); \
+}
+
 typedef enum {
   TOK_UNKNOWN,
   TOK_SEMICOLON,
@@ -40,18 +47,7 @@ typedef struct {
   uint32_t line_num;
 } lex_t;
 
-typedef struct {
-  // global
-} parser_t;
-
-lex_t lex;
-
-#define ERROR(...) { \
-  printf("Error, line %u: ", lex.line_num); \
-  printf(__VA_ARGS__); \
-  printf("\n"); \
-  exit(1); \
-}
+static lex_t lex;
 
 static void parse_expr(int minPrec);
 
@@ -266,7 +262,6 @@ static bool tok_is_operator(token_t *t) {
 }
 
 static void parse_expr_primary(void) {
-  TRACE(__func__);
 
   token_t prim;
   lex_pop(&prim);
@@ -305,12 +300,16 @@ static int tok_precedence(token_t *t) {
   }
 }
 
-static bool parse_check_precedence(token_t *tok, int minPrec) {
-  return tok_precedence(tok) <= minPrec;
+static bool parse_check_precedence(token_t *t, int minPrec) {
+  if (tok_is(t, TOK_ASSIGN)) {
+    return tok_precedence(t) < minPrec;
+  }
+  else {
+    return tok_precedence(t) <= minPrec;
+  }
 }
 
 static void parse_expr(int minPrec) {
-  TRACE(__func__);
 
   // lhs
   parse_expr_primary();
@@ -338,7 +337,6 @@ static void parse_expr(int minPrec) {
 }
 
 static void parse_stmt_return(void) {
-  TRACE(__func__);
 
   if (lex_found(TOK_SEMICOLON, NULL)) {
     return;
@@ -350,10 +348,20 @@ static void parse_stmt_return(void) {
 
 static void parse_stmt_local_decl(void) {
 
+  token_t type;
+  lex_pop(&type);
+
+  token_t ident;
+  lex_pop(&ident);
+
+  if (lex_found(TOK_ASSIGN, NULL)) {
+    parse_expr(/*minPrec=*/0);
+  }
+
+  lex_expect(TOK_SEMICOLON);
 }
 
 static void parse_stmt(void) {
-  TRACE(__func__);
 
   token_t la;
   lex_peek(&la);
@@ -375,7 +383,6 @@ static void parse_stmt(void) {
 }
 
 static void parse_func(token_t *type, token_t *ident) {
-  TRACE(__func__);
 
   // parse arguments
   if (!lex_found(TOK_RPAREN, NULL)) {
@@ -403,11 +410,9 @@ static void parse_func(token_t *type, token_t *ident) {
 }
 
 static void parse(void) {
-  TRACE(__func__);
 
   token_t token;
   while (!lex_found(TOK_EOF, &token)) {
-    TRACE(__func__);
 
     token_t type;
     lex_pop(&type);
