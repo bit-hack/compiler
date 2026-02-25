@@ -1,5 +1,5 @@
 all:
-	gcc -g -O0 compiler.c -o compiler
+	gcc -g -O0 token.c lex.c parse.c main.c -o compiler
 
 test:
-	./compiler test.c
+	./compiler tests/test.c
