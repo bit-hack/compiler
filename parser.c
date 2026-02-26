@@ -87,6 +87,40 @@ static ast_node_p parse_expr(int minPrec) {
   return exprStackPop();
 }
 
+static ast_node_p parse_stmt_if(void) {
+
+  ast_node_p n = ast_node_new(AST_STMT_IF);
+
+  // condition
+  lex_expect(TOK_LPAREN);
+  n->stmt_if.expr = parse_expr(0);
+  lex_expect(TOK_RPAREN);
+
+  // is true branch
+  n->stmt_if.is_true = parse_stmt();
+
+  // if false branch
+  if (lex_found(TOK_ELSE, NULL)) {
+    n->stmt_if.is_false = parse_stmt();
+  }
+
+  return n;
+}
+
+static ast_node_p parse_stmt_while(void) {
+
+  ast_node_p n = ast_node_new(AST_STMT_WHILE);
+
+  // condition
+  lex_expect(TOK_LPAREN);
+  n->stmt_while.expr = parse_expr(0);
+  lex_expect(TOK_RPAREN);
+  
+  n->stmt_while.body = parse_stmt();
+
+  return n;
+}
+
 static ast_node_p parse_stmt_return(void) {
 
   ast_node_p n = ast_node_new(AST_STMT_RETURN);
@@ -137,6 +171,18 @@ static ast_node_p parse_stmt(void) {
   // local decl
   if (tok_is_type(&la)) {
     return parse_stmt_local_decl();
+  }
+
+  // if conditional
+  if (tok_is(&la, TOK_IF)) {
+    lex_pop(&la);
+    return parse_stmt_if();
+  }
+
+  // while loop
+  if (tok_is(&la, TOK_WHILE)) {
+    lex_pop(&la);
+    return parse_stmt_while();
   }
 
   // empty statement

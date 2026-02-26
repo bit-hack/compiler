@@ -140,9 +140,20 @@ void lex_pop(token_t *out) {
   case '^':  out->type = TOK_BIT_XOR;   break;
   case '&':  out->type = lex_match("&&") ? TOK_LOG_AND : TOK_BIT_AND; break;
   case '|':  out->type = lex_match("||") ? TOK_LOG_OR  : TOK_BIT_OR;  break;
-  case 'v': if (lex_match("void"))   { out->type = TOK_VOID;   } break;
-  case 'i': if (lex_match("int"))    { out->type = TOK_INT;    } break;
-  case 'r': if (lex_match("return")) { out->type = TOK_RETURN; } break;
+  case 'v': if (lex_match("void")) { out->type = TOK_VOID;   } break;
+  case 'e':
+    if (lex_match("else")) { out->type = TOK_ELSE; break; }
+    break;
+  case 'i':
+    if (lex_match("int")) { out->type = TOK_INT; break; }
+    if (lex_match("if"))  { out->type = TOK_IF;  break; }
+    break;
+  case 'r':
+    if (lex_match("return")) { out->type = TOK_RETURN; break; }
+    break;
+  case 'w':
+    if (lex_match("while")) { out->type = TOK_WHILE; break; }
+    break;
   }
 
   // second stage classifier

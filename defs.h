@@ -27,8 +27,11 @@ typedef enum {
   TOK_IDENT,
   TOK_INT,
   TOK_INT_LIT,
+  TOK_IF,
+  TOK_ELSE,
   TOK_VOID,
   TOK_RETURN,
+  TOK_WHILE,
   TOK_COMMA,
   TOK_ASSIGN,
   TOK_BIT_AND,
@@ -51,6 +54,8 @@ typedef enum {
   AST_STMT_RETURN,
   AST_STMT_EXPR,
   AST_STMT_COMPOUND,
+  AST_STMT_IF,
+  AST_STMT_WHILE,
   AST_EXPR_IDENT,
   AST_EXPR_INT_LIT,
   AST_EXPR_BIN_OP,
@@ -117,6 +122,17 @@ typedef struct ast_node_s {
     struct {
       ast_node_p stmt;
     } stmt_compound;
+
+    struct {
+      ast_node_p expr;
+      ast_node_p is_true;
+      ast_node_p is_false;
+    } stmt_if;
+
+    struct {
+      ast_node_p expr;
+      ast_node_p body;
+    } stmt_while;
 
     struct {
       token_t token;

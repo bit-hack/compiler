@@ -31,7 +31,7 @@ void ast_walk(ast_node_p n, int level) {
   do {
 
     for (uint32_t i=0; i<level; ++i) {
-      printf("  ");
+      printf(". ");
     }
 
     switch (n->type) {
@@ -67,6 +67,17 @@ void ast_walk(ast_node_p n, int level) {
     case AST_STMT_COMPOUND:
       printf("AST_STMT_COMPOUND\n");
       ast_walk(n->stmt_compound.stmt, level+1);
+      break;
+    case AST_STMT_IF:
+      printf("AST_STMT_IF\n");
+      ast_walk(n->stmt_if.expr, level+1);
+      ast_walk(n->stmt_if.is_true, level+1);
+      ast_walk(n->stmt_if.is_false, level+1);
+      break;
+    case AST_STMT_WHILE:
+      printf("AST_STMT_WHILE\n");
+      ast_walk(n->stmt_while.expr, level+1);
+      ast_walk(n->stmt_while.body, level+1);
       break;
     case AST_EXPR_IDENT:
       printf("AST_EXPR_IDENT ");
