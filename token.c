@@ -18,6 +18,13 @@ const char *tok_name(token_type_t type) {
   case TOK_ADD:        return "+";
   case TOK_SUB:        return "-";
   case TOK_MUL:        return "*";
+  case TOK_DIV:        return "/";
+  case TOK_MOD:        return "%";
+  case TOK_BIT_AND:    return "&";
+  case TOK_LOG_AND:    return "&&";
+  case TOK_BIT_OR:     return "|";
+  case TOK_LOG_OR:     return "||";
+  case TOK_BIT_XOR:    return "^";
   case TOK_EOF:        return "end of file";
   }
 }
@@ -36,30 +43,34 @@ bool tok_is(token_t *t, token_type_t type) {
   return t->type == type;
 }
 
-bool tok_is_operator(token_t *t) {
-  switch (t->type) {
-  case TOK_ADD:
-  case TOK_SUB:
-  case TOK_MUL:
-  case TOK_ASSIGN:
-    return true;
-  default:
-    return false;
-  }
-}
-
 int tok_precedence(token_t *t) {
   switch (t->type) {
   case TOK_ASSIGN:
     return 1;
+  case TOK_LOG_OR:
+  case TOK_LOG_AND:
+    return 2;
+  case TOK_BIT_OR:
+  case TOK_BIT_AND:
+  case TOK_BIT_XOR:
+    return 3;
   case TOK_ADD:
   case TOK_SUB:
     return 8;
   case TOK_MUL:
-//case TOK_MOD:
-//case TOK_DIV:
+  case TOK_MOD:
+  case TOK_DIV:
     return 9;
   default:
-    ERROR("Internal error");
+    return 0;
   }
+}
+
+bool tok_is_operator(token_t *t) {
+  return tok_precedence(t) > 0;
+}
+
+void tok_print(token_t *t) {
+  const int size = t->end - t->start;
+  printf("%.*s", size, t->start);
 }

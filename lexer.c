@@ -134,7 +134,12 @@ void lex_pop(token_t *out) {
   case '+':  out->type = TOK_ADD;       break;
   case '-':  out->type = TOK_SUB;       break;
   case '*':  out->type = TOK_MUL;       break;
+  case '/':  out->type = TOK_DIV;       break;
+  case '%':  out->type = TOK_MOD;       break;
   case ',':  out->type = TOK_COMMA;     break;
+  case '^':  out->type = TOK_BIT_XOR;   break;
+  case '&':  out->type = lex_match("&&") ? TOK_LOG_AND : TOK_BIT_AND; break;
+  case '|':  out->type = lex_match("||") ? TOK_LOG_OR  : TOK_BIT_OR;  break;
   case 'v': if (lex_match("void"))   { out->type = TOK_VOID;   } break;
   case 'i': if (lex_match("int"))    { out->type = TOK_INT;    } break;
   case 'r': if (lex_match("return")) { out->type = TOK_RETURN; } break;
@@ -158,11 +163,6 @@ void lex_pop(token_t *out) {
 
   // fill in token end
   out->end = lex.ptr;
-
-#if 1
-  const int size = out->end - out->start;
-  printf("<%.*s>\n", size, out->start);
-#endif
 }
 
 void lex_peek(token_t *out) {
