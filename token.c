@@ -43,7 +43,7 @@ bool tok_is(token_t *t, token_type_t type) {
   return t->type == type;
 }
 
-int tok_precedence(token_t *t) {
+int tok_prec(token_t *t) {
   switch (t->type) {
   case TOK_ASSIGN:
     return 1;
@@ -67,7 +67,7 @@ int tok_precedence(token_t *t) {
 }
 
 bool tok_is_operator(token_t *t) {
-  return tok_precedence(t) > 0;
+  return tok_prec(t) > 0;
 }
 
 void tok_print(token_t *t) {

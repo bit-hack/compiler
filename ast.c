@@ -1,5 +1,6 @@
 #include "defs.h"
 
+
 ast_node_p ast_node_new(ast_node_type_t type) {
   ast_node_p node = malloc(sizeof(ast_node_t));
   memset(node, 0, sizeof(ast_node_t));
@@ -79,6 +80,12 @@ void ast_walk(ast_node_p n, int level) {
       ast_walk(n->stmt_while.expr, level+1);
       ast_walk(n->stmt_while.body, level+1);
       break;
+    case AST_STMT_BREAK:
+      printf("AST_STMT_BREAK\n");
+      break;
+    case AST_STMT_CONTINUE:
+      printf("AST_STMT_CONTINUE\n");
+      break;
     case AST_EXPR_IDENT:
       printf("AST_EXPR_IDENT ");
       tok_print(&n->expr_ident.token);
@@ -96,6 +103,8 @@ void ast_walk(ast_node_p n, int level) {
       ast_walk(n->expr_bin_op.lhs, level+1);
       ast_walk(n->expr_bin_op.rhs, level+1);
       break;
+    default:
+      assert(!"unhandled node type");
     }
 
   } while (n = n->next);

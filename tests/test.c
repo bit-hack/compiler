@@ -3,9 +3,9 @@ int foo(int a, int b);
 void main(int f) {
   if (1) {
     while (2)
-      return 3;
+      continue;
   }
   else {
-    return 4;
+    break;
   }
 }

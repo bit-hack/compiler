@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 
 #define ERROR(...) { \
@@ -31,6 +32,8 @@ typedef enum {
   TOK_ELSE,
   TOK_VOID,
   TOK_RETURN,
+  TOK_BREAK,
+  TOK_CONTINUE,
   TOK_WHILE,
   TOK_COMMA,
   TOK_ASSIGN,
@@ -56,6 +59,8 @@ typedef enum {
   AST_STMT_COMPOUND,
   AST_STMT_IF,
   AST_STMT_WHILE,
+  AST_STMT_BREAK,
+  AST_STMT_CONTINUE,
   AST_EXPR_IDENT,
   AST_EXPR_INT_LIT,
   AST_EXPR_BIN_OP,
@@ -156,7 +161,7 @@ const char *tok_name(token_type_t type);
 bool tok_is_type(token_t *t);
 bool tok_is_operator(token_t *t);
 bool tok_is(token_t *t, token_type_t type);
-int tok_precedence(token_t *t);
+int tok_prec(token_t *t);
 void tok_print(token_t *t);
 
 bool lex_init(const char *file);

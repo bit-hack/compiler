@@ -1,5 +1,11 @@
+#include <assert.h>
+
 #include "defs.h"
 
+
+#define AST_NODE_INSERT( INTO, NODE ) { \
+  INTO = ast_node_insert(INTO, NODE); \
+}
 
 static ast_node_p parse_expr(int minPrec);
 static ast_node_p parse_stmt(void);
@@ -7,10 +13,13 @@ static ast_node_p parse_stmt(void);
 static parser_t parser;
 
 static void exprStackPush(ast_node_p n) {
+  static const size_t exprStackSize = sizeof(parser.exprStack) / sizeof(ast_node_p);
+  assert(parser.exprStackHead < exprStackSize);
   parser.exprStack[ parser.exprStackHead++ ] = n;
 }
 
 static ast_node_p exprStackPop(void) {
+  assert(parser.exprStackHead > 0);
   return parser.exprStack[ --parser.exprStackHead ];
 }
 
@@ -42,12 +51,12 @@ static ast_node_p parse_expr_primary(void) {
   return NULL;
 }
 
-static bool parse_check_precedence(token_t *t, int minPrec) {
+static bool parse_check_prec(token_t *t, int minPrec) {
   if (tok_is(t, TOK_ASSIGN)) {
-    return tok_precedence(t) < minPrec;
+    return tok_prec(t) < minPrec;
   }
   else {
-    return tok_precedence(t) <= minPrec;
+    return tok_prec(t) <= minPrec;
   }
 }
 
@@ -66,7 +75,7 @@ static ast_node_p parse_expr(int minPrec) {
     }
 
     // if our found operator binds less tightly than a prior one stop.
-    if (parse_check_precedence(&op, minPrec)) {
+    if (parse_check_prec(&op, minPrec)) {
       break;
     }
 
@@ -74,7 +83,7 @@ static ast_node_p parse_expr(int minPrec) {
     lex_pop(&op);
 
     // rhs
-    ast_node_p rhs = parse_expr(tok_precedence(&op));
+    ast_node_p rhs = parse_expr(tok_prec(&op));
     ast_node_p lhs = exprStackPop();    
 
     ast_node_p bin_op = ast_node_new(AST_EXPR_BIN_OP);
@@ -93,7 +102,7 @@ static ast_node_p parse_stmt_if(void) {
 
   // condition
   lex_expect(TOK_LPAREN);
-  n->stmt_if.expr = parse_expr(0);
+  n->stmt_if.expr = parse_expr(/*minPrec=*/0);
   lex_expect(TOK_RPAREN);
 
   // is true branch
@@ -113,9 +122,10 @@ static ast_node_p parse_stmt_while(void) {
 
   // condition
   lex_expect(TOK_LPAREN);
-  n->stmt_while.expr = parse_expr(0);
+  n->stmt_while.expr = parse_expr(/*minPrec=*/0);
   lex_expect(TOK_RPAREN);
   
+  // statement
   n->stmt_while.body = parse_stmt();
 
   return n;
@@ -130,10 +140,22 @@ static ast_node_p parse_stmt_return(void) {
   }
 
   ast_node_p e = parse_expr(/*minPrec=*/0);
-  n->stmt_return.expr = ast_node_insert(n->stmt_return.expr, e);
+  AST_NODE_INSERT(n->stmt_return.expr, e);
 
   lex_expect(TOK_SEMICOLON);
   return n;
+}
+
+static ast_node_p parse_stmt_break(void) {
+
+  lex_expect(TOK_SEMICOLON);
+  return ast_node_new(AST_STMT_BREAK);
+}
+
+static ast_node_p parse_stmt_continue(void) {
+
+  lex_expect(TOK_SEMICOLON);
+  return ast_node_new(AST_STMT_CONTINUE);
 }
 
 static ast_node_p parse_stmt_local_decl(void) {
@@ -144,7 +166,7 @@ static ast_node_p parse_stmt_local_decl(void) {
   lex_pop(&n->decl_var.ident);
 
   if (lex_found(TOK_ASSIGN, NULL)) {
-    n->decl_var.expr = ast_node_insert(n->decl_var.expr, parse_expr(/*minPrec=*/0));
+    AST_NODE_INSERT(n->decl_var.expr, parse_expr(/*minPrec=*/0));
   }
 
   lex_expect(TOK_SEMICOLON);
@@ -157,7 +179,7 @@ static ast_node_p parse_stmt_compound(void) {
 
   while (!lex_found(TOK_RBRACE, NULL)) {
     ast_node_p n = parse_stmt();
-    c->stmt_compound.stmt = ast_node_insert(c->stmt_compound.stmt, n);
+    AST_NODE_INSERT(c->stmt_compound.stmt, n);
   }
 
   return c;
@@ -185,6 +207,16 @@ static ast_node_p parse_stmt(void) {
     return parse_stmt_while();
   }
 
+  if (tok_is(&la, TOK_BREAK)) {
+    lex_pop(&la);
+    return parse_stmt_break();
+  }
+
+  if (tok_is(&la, TOK_CONTINUE)) {
+    lex_pop(&la);
+    return parse_stmt_continue();
+  }
+
   // empty statement
   if (tok_is(&la, TOK_SEMICOLON)) {
     lex_pop(&la);
@@ -206,7 +238,7 @@ static ast_node_p parse_stmt(void) {
   // fallback to trying to parse an expression
   ast_node_p expr = parse_expr(/*minPrec=*/0);
   ast_node_p stmt_expr = ast_node_new(AST_STMT_EXPR);
-  stmt_expr->stmt_expr.expr = ast_node_insert(stmt_expr->stmt_expr.expr, stmt_expr);
+  AST_NODE_INSERT(stmt_expr->stmt_expr.expr, stmt_expr);
 
   lex_expect(TOK_SEMICOLON);
 
@@ -229,9 +261,9 @@ static void parse_func(ast_node_t *decl) {
       lex_pop(&ident);
 
       ast_node_p arg = ast_node_new(AST_DECL_VAR);
+      AST_NODE_INSERT(decl->decl_func.args, arg);
       arg->decl_var.type = type;
       arg->decl_var.ident = ident;
-      decl->decl_func.args = ast_node_insert(decl->decl_func.args, arg);
 
     } while (lex_found(TOK_COMMA, NULL));
   }
@@ -241,7 +273,7 @@ static void parse_func(ast_node_t *decl) {
     // parse function body
     while (!lex_found(TOK_RBRACE, NULL)) {
         ast_node_p stmt = parse_stmt();
-        decl->decl_func.body = ast_node_insert(decl->decl_func.body, stmt);
+        AST_NODE_INSERT(decl->decl_func.body, stmt);
     }
   }
   else {
@@ -268,7 +300,7 @@ void parse(void) {
     if (lex_found(TOK_LPAREN, NULL)) {
 
       ast_node_p f = ast_node_new(AST_DECL_FUNC);
-      r->root.node = ast_node_insert(r->root.node, f);
+      AST_NODE_INSERT(r->root.node, f);
       f->decl_func.type = type;
       f->decl_func.ident = ident;
 
@@ -277,7 +309,7 @@ void parse(void) {
     }
 
     ast_node_p v = ast_node_new(AST_DECL_VAR);
-    r->root.node = ast_node_insert(r->root.node, v);
+    AST_NODE_INSERT(r->root.node, v);
     v->decl_var.type = type;
     v->decl_var.ident = ident;
 

@@ -148,6 +148,12 @@ void lex_pop(token_t *out) {
     if (lex_match("int")) { out->type = TOK_INT; break; }
     if (lex_match("if"))  { out->type = TOK_IF;  break; }
     break;
+  case 'b':
+    if (lex_match("break")) { out->type = TOK_BREAK; break; }
+    break;
+  case 'c':
+    if (lex_match("continue")) { out->type = TOK_CONTINUE; break; }
+    break;
   case 'r':
     if (lex_match("return")) { out->type = TOK_RETURN; break; }
     break;
