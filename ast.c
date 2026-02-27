@@ -115,6 +115,12 @@ void ast_walk(ast_node_p n, int level) {
       ast_walk(n->stmt_for.update, level+1);
       ast_walk(n->stmt_for.body,   level+1);
       break;
+    case AST_EXPR_UNARY_OP:
+      printf("AST_EXPR_UNARY_OP ");
+      tok_print(&n->expr_unary_op.op);
+      printf("\n");
+      ast_walk(n->expr_unary_op.rhs, level+1);
+      break;
     default:
       assert(!"unhandled node type");
     }

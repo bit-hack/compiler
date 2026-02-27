@@ -24,9 +24,21 @@ static ast_node_p exprStackPop(void) {
 }
 
 static ast_node_p parse_expr_primary(void) {
- 
+
   token_t prim;
   lex_pop(&prim);
+
+  // unary operator
+  if (tok_is(&prim, TOK_LOG_NOT) ||
+      tok_is(&prim, TOK_BIT_NOT) ||
+      tok_is(&prim, TOK_SUB)     ||
+      tok_is(&prim, TOK_BIT_AND) ||
+      tok_is(&prim, TOK_MUL)) {
+    ast_node_p n = ast_node_new(AST_EXPR_UNARY_OP);
+    n->expr_unary_op.op = prim;
+    n->expr_unary_op.rhs = parse_expr_primary();
+    return n;
+  }
 
   // parenthesized expression
   if (tok_is(&prim, TOK_LPAREN)) {
@@ -61,6 +73,7 @@ static bool parse_check_prec(token_t *t, int minPrec) {
 }
 
 static ast_node_p parse_expr(int minPrec) {
+
 
   // lhs
   exprStackPush(parse_expr_primary());

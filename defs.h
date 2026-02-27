@@ -80,6 +80,7 @@ typedef enum {
   AST_EXPR_IDENT,
   AST_EXPR_INT_LIT,
   AST_EXPR_BIN_OP,
+  AST_EXPR_UNARY_OP,
 } ast_node_type_t;
 
 typedef struct {
@@ -180,6 +181,11 @@ typedef struct ast_node_s {
       ast_node_p lhs;
       ast_node_p rhs;
     } expr_bin_op;
+
+    struct {
+      token_t op;
+      ast_node_p rhs;
+    } expr_unary_op;
 
   };
 
