@@ -103,6 +103,18 @@ void ast_walk(ast_node_p n, int level) {
       ast_walk(n->expr_bin_op.lhs, level+1);
       ast_walk(n->expr_bin_op.rhs, level+1);
       break;
+    case AST_STMT_DO:
+      printf("AST_STMT_DO:\n");
+      ast_walk(n->stmt_do.body, level+1);
+      ast_walk(n->stmt_do.expr, level+1);
+      break;
+    case AST_STMT_FOR:
+      printf("AST_STMT_FOR:\n");
+      ast_walk(n->stmt_for.init,   level+1);
+      ast_walk(n->stmt_for.cond,   level+1);
+      ast_walk(n->stmt_for.update, level+1);
+      ast_walk(n->stmt_for.body,   level+1);
+      break;
     default:
       assert(!"unhandled node type");
     }

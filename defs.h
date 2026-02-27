@@ -26,6 +26,8 @@ typedef enum {
   TOK_LBRACE,
   TOK_RBRACE,
   TOK_IDENT,
+  TOK_CHAR,
+  TOK_SHORT,
   TOK_INT,
   TOK_INT_LIT,
   TOK_IF,
@@ -35,18 +37,30 @@ typedef enum {
   TOK_BREAK,
   TOK_CONTINUE,
   TOK_WHILE,
-  TOK_COMMA,
-  TOK_ASSIGN,
-  TOK_BIT_AND,
-  TOK_LOG_AND,
-  TOK_BIT_OR,
-  TOK_LOG_OR,
-  TOK_BIT_XOR,
-  TOK_ADD,
-  TOK_SUB,
-  TOK_MUL,
-  TOK_DIV,
-  TOK_MOD,
+  TOK_DO,
+  TOK_FOR,
+  TOK_COMMA,    // ,
+  TOK_ASSIGN,   // =
+  TOK_BIT_AND,  // &
+  TOK_LOG_AND,  // &&
+  TOK_BIT_OR,   // |
+  TOK_LOG_OR,   // ||
+  TOK_BIT_XOR,  // ^
+  TOK_BIT_NOT,  // ~
+  TOK_LOG_NOT,  // !
+  TOK_SHL,      // <<
+  TOK_SHR,      // >>
+  TOK_NEQ,      // !=
+  TOK_EQ,       // ==
+  TOK_LT,       // <
+  TOK_LTE,      // <=
+  TOK_GT,       // >
+  TOK_GTE,      // >=
+  TOK_ADD,      // +
+  TOK_SUB,      // -
+  TOK_MUL,      // *
+  TOK_DIV,      // /
+  TOK_MOD,      // %
   TOK_EOF,
 } token_type_t;
 
@@ -61,6 +75,8 @@ typedef enum {
   AST_STMT_WHILE,
   AST_STMT_BREAK,
   AST_STMT_CONTINUE,
+  AST_STMT_DO,
+  AST_STMT_FOR,
   AST_EXPR_IDENT,
   AST_EXPR_INT_LIT,
   AST_EXPR_BIN_OP,
@@ -138,6 +154,18 @@ typedef struct ast_node_s {
       ast_node_p expr;
       ast_node_p body;
     } stmt_while;
+
+    struct {
+      ast_node_p expr;
+      ast_node_p body;
+    } stmt_do;
+
+    struct {
+      ast_node_p init;
+      ast_node_p cond;
+      ast_node_p update;
+      ast_node_p body;
+    } stmt_for;
 
     struct {
       token_t token;

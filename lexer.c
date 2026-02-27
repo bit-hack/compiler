@@ -122,6 +122,8 @@ void lex_pop(token_t *out) {
   out->start = lex.ptr;
   out->end   = NULL;
 
+#define TEST(FOR, TOK) if (lex_match(FOR)) { out->type = TOK; break; }
+
   // first stage simple classifier
   switch (*lex.ptr) {
   case '\0': out->type = TOK_EOF;       break;
@@ -130,7 +132,6 @@ void lex_pop(token_t *out) {
   case ')':  out->type = TOK_RPAREN;    break;
   case '{':  out->type = TOK_LBRACE;    break;
   case '}':  out->type = TOK_RBRACE;    break;
-  case '=':  out->type = TOK_ASSIGN;    break;
   case '+':  out->type = TOK_ADD;       break;
   case '-':  out->type = TOK_SUB;       break;
   case '*':  out->type = TOK_MUL;       break;
@@ -138,28 +139,45 @@ void lex_pop(token_t *out) {
   case '%':  out->type = TOK_MOD;       break;
   case ',':  out->type = TOK_COMMA;     break;
   case '^':  out->type = TOK_BIT_XOR;   break;
-  case '&':  out->type = lex_match("&&") ? TOK_LOG_AND : TOK_BIT_AND; break;
-  case '|':  out->type = lex_match("||") ? TOK_LOG_OR  : TOK_BIT_OR;  break;
-  case 'v': if (lex_match("void")) { out->type = TOK_VOID;   } break;
-  case 'e':
-    if (lex_match("else")) { out->type = TOK_ELSE; break; }
+  case '~':  out->type = TOK_BIT_NOT;   break;
+  case '=':
+    TEST("==", TOK_EQ);
+    out->type = TOK_ASSIGN;
     break;
-  case 'i':
-    if (lex_match("int")) { out->type = TOK_INT; break; }
-    if (lex_match("if"))  { out->type = TOK_IF;  break; }
+  case '<':
+    TEST("<=", TOK_LTE);
+    TEST("<<", TOK_SHL);
+    out->type = TOK_LT;
     break;
-  case 'b':
-    if (lex_match("break")) { out->type = TOK_BREAK; break; }
+  case '>':
+    TEST(">>", TOK_SHR);
+    TEST(">=", TOK_GTE);
+    out->type = TOK_GT;
     break;
-  case 'c':
-    if (lex_match("continue")) { out->type = TOK_CONTINUE; break; }
+  case '&':
+    TEST("&&", TOK_LOG_AND);
+    out->type = TOK_BIT_AND;
     break;
-  case 'r':
-    if (lex_match("return")) { out->type = TOK_RETURN; break; }
+  case '|':
+    TEST("||", TOK_LOG_OR);
+    out->type = TOK_BIT_OR;
     break;
-  case 'w':
-    if (lex_match("while")) { out->type = TOK_WHILE; break; }
+  case '!':
+    TEST("!=", TOK_NEQ);
+    out->type = TOK_LOG_NOT;
     break;
+  case 'b':   TEST("break",     TOK_BREAK);     break;
+  case 'c':   TEST("char",      TOK_CHAR);
+              TEST("continue",  TOK_CONTINUE);  break;
+  case 'd':   TEST("do",        TOK_DO);        break;
+  case 'e':   TEST("else",      TOK_ELSE);      break;
+  case 'f':   TEST("for",       TOK_FOR);       break;
+  case 'i':   TEST("int",       TOK_INT);
+              TEST("if",        TOK_IF);        break;
+  case 'r':   TEST("return",    TOK_RETURN);    break;
+  case 's':   TEST("short",     TOK_SHORT);     break;
+  case 'v':   TEST("void",      TOK_VOID);      break;
+  case 'w':   TEST("while",     TOK_WHILE);     break;
   }
 
   // second stage classifier

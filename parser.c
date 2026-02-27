@@ -185,6 +185,38 @@ static ast_node_p parse_stmt_compound(void) {
   return c;
 }
 
+static ast_node_p parse_stmt_do(void) {
+
+  ast_node_p n = ast_node_new(AST_STMT_DO);
+
+  AST_NODE_INSERT(n->stmt_do.body, parse_stmt());
+
+  lex_expect(TOK_WHILE);
+  lex_expect(TOK_LPAREN);
+  AST_NODE_INSERT(n->stmt_do.expr, parse_expr(/*minPrec=*/0));
+  lex_expect(TOK_RPAREN);
+  lex_expect(TOK_SEMICOLON);
+
+  return n;
+}
+
+static ast_node_p parse_stmt_for(void) {
+
+  ast_node_p n = ast_node_new(AST_STMT_FOR);
+
+  lex_expect(TOK_LPAREN);
+  AST_NODE_INSERT(n->stmt_for.init, parse_expr(/*minPrec=*/0));
+  lex_expect(TOK_SEMICOLON);
+  AST_NODE_INSERT(n->stmt_for.cond, parse_expr(/*minPrec=*/0));
+  lex_expect(TOK_SEMICOLON);
+  AST_NODE_INSERT(n->stmt_for.update, parse_expr(/*minPrec=*/0));
+  lex_expect(TOK_RPAREN);
+
+  AST_NODE_INSERT(n->stmt_for.body, parse_stmt());
+
+  return n;
+}
+
 static ast_node_p parse_stmt(void) {
 
   token_t la;
@@ -205,6 +237,16 @@ static ast_node_p parse_stmt(void) {
   if (tok_is(&la, TOK_WHILE)) {
     lex_pop(&la);
     return parse_stmt_while();
+  }
+
+  if (tok_is(&la, TOK_DO)) {
+    lex_pop(&la);
+    return parse_stmt_do();
+  }
+
+  if (tok_is(&la, TOK_FOR)) {
+    lex_pop(&la);
+    return parse_stmt_for();
   }
 
   if (tok_is(&la, TOK_BREAK)) {
