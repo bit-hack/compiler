@@ -1,7 +1,7 @@
 #include "defs.h"
 
 
-const char *tok_name(token_type_t type) {
+const char *tok_type_name(token_type_t type) {
   switch (type) {
   case TOK_SEMICOLON:  return ";";
   case TOK_LPAREN:     return "(";
@@ -50,6 +50,10 @@ const char *tok_name(token_type_t type) {
   }
 }
 
+const char* tok_name(token_t* t) {
+  return tok_type_name(t->type);
+}
+
 bool tok_is_type(token_t *t) {
   switch (t->type) {
   case TOK_VOID:
@@ -68,7 +72,7 @@ bool tok_is(token_t *t, token_type_t type) {
 
 int tok_prec(token_t *t) {
   switch (t->type) {
-  case TOK_COMMA:     return 1;
+//case TOK_COMMA:     return 1; <-- interferes with call arg parsing
   case TOK_ASSIGN:    return 2;
   case TOK_LOG_OR:    return 3;
   case TOK_LOG_AND:   return 4;
@@ -98,6 +102,6 @@ bool tok_is_operator(token_t *t) {
 }
 
 void tok_print(token_t *t) {
-  const int size = t->end - t->start;
-  printf("%.*s", size, t->start);
+  const size_t size = t->end - t->start;
+  printf("%.*s", (int)size, t->start);
 }

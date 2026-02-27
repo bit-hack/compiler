@@ -3,10 +3,9 @@
 
 ast_node_p ast_node_new(ast_node_type_t type) {
   ast_node_p node = malloc(sizeof(ast_node_t));
+  assert(node);
   memset(node, 0, sizeof(ast_node_t));
-
   node->type = type;
-
   return node;
 }
 
@@ -21,109 +20,153 @@ ast_node_p ast_node_insert(ast_node_p chain, ast_node_p to_insert) {
 
   chain->last->next = to_insert;
   chain->last       = to_insert;
+  return chain;
 }
 
-void ast_walk(ast_node_p n, int level) {
+static void ast_dump_node(ast_node_p n, int level) {
+
+  for (int i=0; i<level; ++i) {
+    printf(". ");
+  }
+
+  switch (n->type) {
+  case AST_ROOT:
+    printf("AST_ROOT\n");
+    break;
+  case AST_DECL_VAR:
+    printf("AST_DECL_VAR %s %s\n", tok_name(&n->decl_var.type), tok_name(&n->decl_var.ident));
+    break;
+  case AST_DECL_FUNC:
+    printf("AST_DECL_FUNC %s %s\n", tok_name(&n->decl_func.type), tok_name(&n->decl_func.ident));
+    break;
+  case AST_STMT_RETURN:
+    printf("AST_STMT_RETURN\n");
+    break;
+  case AST_STMT_EXPR:
+    printf("AST_STMT_EXPR\n");
+    break;
+  case AST_STMT_COMPOUND:
+    printf("AST_STMT_COMPOUND\n");
+    break;
+  case AST_STMT_IF:
+    printf("AST_STMT_IF\n");
+    break;
+  case AST_STMT_WHILE:
+    printf("AST_STMT_WHILE\n");
+    break;
+  case AST_STMT_BREAK:
+    printf("AST_STMT_BREAK\n");
+    break;
+  case AST_STMT_CONTINUE:
+    printf("AST_STMT_CONTINUE\n");
+    break;
+  case AST_EXPR_IDENT:
+    printf("AST_EXPR_IDENT %s\n", tok_name(&n->expr_ident.token));
+    break;
+  case AST_EXPR_INT_LIT:
+    printf("AST_EXPR_INT_LIT %s\n", tok_name(&n->expr_int_lit.token));
+    break;
+  case AST_EXPR_BIN_OP:
+    printf("AST_EXPR_BIN_OP %s\n", tok_name(&n->expr_bin_op.op));
+    break;
+  case AST_STMT_DO:
+    printf("AST_STMT_DO\n");
+    break;
+  case AST_STMT_FOR:
+    printf("AST_STMT_FOR\n");
+    break;
+  case AST_EXPR_UNARY_OP:
+    printf("AST_EXPR_UNARY_OP %s\n", tok_name(&n->expr_unary_op.op));
+    break;
+  case AST_EXPR_CALL:
+    printf("AST_EXPR_CALL %s\n", tok_name(&n->expr_call.ident));
+    break;
+  default:
+    assert(!"unhandled node type");
+  }
+}
+
+typedef void (*ast_walk_func_t)(ast_node_p node, int level);
+
+static void ast_walk(ast_node_p n, ast_walk_func_t preFunc, int level) {
+
+#define WALK(NODE) { ast_walk(NODE, preFunc, level+1); }
 
   if (!n) {
     return;
   }
 
   do {
-
-    for (uint32_t i=0; i<level; ++i) {
-      printf(". ");
+    if (preFunc) {
+      preFunc(n, level);
     }
 
     switch (n->type) {
     case AST_ROOT:
-      printf("AST_ROOT\n");
-      ast_walk(n->root.node, level+1);
+      WALK(n->root.node);
       break;
     case AST_DECL_VAR:
-      printf("AST_DECL_VAR ");
-      tok_print(&n->decl_var.type);
-      printf(" ");
-      tok_print(&n->decl_var.ident);
-      printf("\n");
-      ast_walk(n->decl_var.expr, level+1);
+      WALK(n->decl_var.expr);
       break;
     case AST_DECL_FUNC:
-      printf("AST_DECL_FUNC ");
-      tok_print(&n->decl_func.type);
-      printf(" ");
-      tok_print(&n->decl_func.ident);
-      printf("\n");
-      ast_walk(n->decl_func.args, level+1);
-      ast_walk(n->decl_func.body, level+1);
+      WALK(n->decl_func.args);
+      WALK(n->decl_func.body);
       break;
     case AST_STMT_RETURN:
-      printf("AST_STMT_RETURN\n");
-      ast_walk(n->stmt_return.expr, level+1);
+      WALK(n->stmt_return.expr);
       break;
     case AST_STMT_EXPR:
-      printf("AST_STMT_EXPR\n");
-      ast_walk(n->stmt_expr.expr, level+1);
+      WALK(n->stmt_expr.expr);
       break;
     case AST_STMT_COMPOUND:
-      printf("AST_STMT_COMPOUND\n");
-      ast_walk(n->stmt_compound.stmt, level+1);
+      WALK(n->stmt_compound.stmt);
       break;
     case AST_STMT_IF:
-      printf("AST_STMT_IF\n");
-      ast_walk(n->stmt_if.expr, level+1);
-      ast_walk(n->stmt_if.is_true, level+1);
-      ast_walk(n->stmt_if.is_false, level+1);
+      WALK(n->stmt_if.expr);
+      WALK(n->stmt_if.is_true);
+      WALK(n->stmt_if.is_false);
       break;
     case AST_STMT_WHILE:
-      printf("AST_STMT_WHILE\n");
-      ast_walk(n->stmt_while.expr, level+1);
-      ast_walk(n->stmt_while.body, level+1);
+      WALK(n->stmt_while.expr);
+      WALK(n->stmt_while.body);
       break;
     case AST_STMT_BREAK:
-      printf("AST_STMT_BREAK\n");
       break;
     case AST_STMT_CONTINUE:
-      printf("AST_STMT_CONTINUE\n");
       break;
     case AST_EXPR_IDENT:
-      printf("AST_EXPR_IDENT ");
-      tok_print(&n->expr_ident.token);
-      printf("\n");
       break;
     case AST_EXPR_INT_LIT:
-      printf("AST_EXPR_INT_LIT ");
-      tok_print(&n->expr_int_lit.token);
-      printf("\n");
       break;
     case AST_EXPR_BIN_OP:
-      printf("AST_EXPR_BIN_OP ");
-      tok_print(&n->expr_bin_op.op);
-      printf("\n");
-      ast_walk(n->expr_bin_op.lhs, level+1);
-      ast_walk(n->expr_bin_op.rhs, level+1);
+      WALK(n->expr_bin_op.lhs);
+      WALK(n->expr_bin_op.rhs);
       break;
     case AST_STMT_DO:
-      printf("AST_STMT_DO:\n");
-      ast_walk(n->stmt_do.body, level+1);
-      ast_walk(n->stmt_do.expr, level+1);
+      WALK(n->stmt_do.body);
+      WALK(n->stmt_do.expr);
       break;
     case AST_STMT_FOR:
-      printf("AST_STMT_FOR:\n");
-      ast_walk(n->stmt_for.init,   level+1);
-      ast_walk(n->stmt_for.cond,   level+1);
-      ast_walk(n->stmt_for.update, level+1);
-      ast_walk(n->stmt_for.body,   level+1);
+      WALK(n->stmt_for.init);
+      WALK(n->stmt_for.cond);
+      WALK(n->stmt_for.update);
+      WALK(n->stmt_for.body);
       break;
     case AST_EXPR_UNARY_OP:
-      printf("AST_EXPR_UNARY_OP ");
-      tok_print(&n->expr_unary_op.op);
-      printf("\n");
-      ast_walk(n->expr_unary_op.rhs, level+1);
+      WALK(n->expr_unary_op.rhs);
+      break;
+    case AST_EXPR_CALL:
+      WALK(n->expr_call.arg);
       break;
     default:
       assert(!"unhandled node type");
     }
 
   } while (n = n->next);
+
+#undef WALK
+}
+
+void ast_dump(ast_node_p n) {
+  ast_walk(n, ast_dump_node, 0);
 }

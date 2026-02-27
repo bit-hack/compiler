@@ -9,7 +9,7 @@ uint32_t lex_line_num(void) {
 
 bool lex_init(const char *file) {
 
-  FILE *fd = fopen(file, "r");
+  FILE *fd = fopen(file, "rb");
   if (!fd) {
     ERROR("Unable to open '%s'\n", file);
     return false;
@@ -22,8 +22,11 @@ bool lex_init(const char *file) {
 
   // read file data
   char *src = malloc(fd_size + 1);
+  if (!src) {
+    return false;
+  }
   fread(src, 1, fd_size, fd);
-  src[fd_size] == '\0';
+  src[fd_size] = '\0';
 
   // close file handle
   fclose(fd);
@@ -39,22 +42,50 @@ bool lex_init(const char *file) {
 }
 
 static void lex_skip_whitespace(void) {
+
+  bool inComment = false;
+
   const char *p = lex.ptr;
   for (;*p; ++p) {
 
-    // TODO: handle comments...
+    // track newlines
+    if (*p == '\n') {
+      lex.line_num++;
+      lex.line_start = (p + 1);
+    }
 
+    // multi line comments
+    if (inComment) {
+      if (p[0] == '*' && p[1] == '/') {
+        inComment = false;
+        ++p;
+      }
+      continue;
+    }
+    if (p[0] == '/' && p[1] == '*') {
+      inComment = true;
+      continue;
+    }
+
+    // skip single line comments
+    if (p[0] == '/' && p[1] == '/') {
+      for (; *p != '\0' && *p != '\n'; ++p);
+      continue;
+    }
+
+    // skip whitespace
     switch (*p) {
     case '\n':
-      lex.line_num++;
-      lex.line_start = (p+1);
     case ' ':
     case '\t':
     case '\r':
       continue;
     }
+
+    // reached a non skipable char
     break;
   }
+
   lex.ptr = p;
 }
 
@@ -212,7 +243,7 @@ void lex_expect(token_type_t type) {
   if (t.type == type) {
     return;
   }
-  ERROR("expected %s token", tok_name(type));
+  ERROR("expected %s token", tok_type_name(type));
 }
 
 bool lex_found(token_type_t type, token_t *out) {

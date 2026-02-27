@@ -23,6 +23,24 @@ static ast_node_p exprStackPop(void) {
   return parser.exprStack[ --parser.exprStackHead ];
 }
 
+static ast_node_p parse_expr_call(token_t *ident) {
+
+  ast_node_p n = ast_node_new(AST_EXPR_CALL);
+  n->expr_call.ident = *ident;
+
+  if (!lex_found(TOK_RPAREN, NULL)) {
+    do {
+
+      ast_node_p e = parse_expr(/*minPrec=*/0);
+      AST_NODE_INSERT(n->expr_call.arg, e);
+
+    } while (lex_found(TOK_COMMA, NULL));
+  }
+  lex_expect(TOK_RPAREN);
+
+  return n;
+}
+
 static ast_node_p parse_expr_primary(void) {
 
   token_t prim;
@@ -48,6 +66,11 @@ static ast_node_p parse_expr_primary(void) {
   }
 
   if (tok_is(&prim, TOK_IDENT)) {
+
+    if (lex_found(TOK_LPAREN, NULL)) {
+      return parse_expr_call(&prim);
+    }
+
     ast_node_p n = ast_node_new(AST_EXPR_IDENT);
     n->expr_ident.token = prim;
     return n;
@@ -73,7 +96,6 @@ static bool parse_check_prec(token_t *t, int minPrec) {
 }
 
 static ast_node_p parse_expr(int minPrec) {
-
 
   // lhs
   exprStackPush(parse_expr_primary());
@@ -337,7 +359,7 @@ static void parse_func(ast_node_t *decl) {
   }
 }
 
-void parse(void) {
+ast_node_p parse(void) {
 
   ast_node_p r = ast_node_new(AST_ROOT);
   parser.astRoot = r;
@@ -376,5 +398,5 @@ void parse(void) {
     lex_expect(TOK_SEMICOLON);
   }
 
-  ast_walk(parser.astRoot, 0);
+  return r;
 }

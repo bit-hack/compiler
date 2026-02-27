@@ -1,4 +1,6 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -81,6 +83,7 @@ typedef enum {
   AST_EXPR_INT_LIT,
   AST_EXPR_BIN_OP,
   AST_EXPR_UNARY_OP,
+  AST_EXPR_CALL,
 } ast_node_type_t;
 
 typedef struct {
@@ -187,11 +190,16 @@ typedef struct ast_node_s {
       ast_node_p rhs;
     } expr_unary_op;
 
+    struct {
+      token_t ident;
+      ast_node_p arg;
+    } expr_call;
   };
 
 } ast_node_t;
 
-const char *tok_name(token_type_t type);
+const char *tok_name(token_t *t);
+const char* tok_type_name(token_type_t type);
 bool tok_is_type(token_t *t);
 bool tok_is_operator(token_t *t);
 bool tok_is(token_t *t, token_type_t type);
@@ -205,8 +213,10 @@ void lex_expect(token_type_t type);
 bool lex_found(token_type_t type, token_t *out);
 uint32_t lex_line_num(void);
 
-void parse(void);
+ast_node_p parse(void);
 
 ast_node_p ast_node_new(ast_node_type_t type);
 ast_node_p ast_node_insert(ast_node_p chain, ast_node_p to_insert);
-void ast_walk(ast_node_p n, int indent);
+void ast_dump(ast_node_p n);
+
+void sema_check(ast_node_p n);
