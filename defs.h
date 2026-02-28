@@ -10,7 +10,14 @@
 
 
 #define ERROR(...) { \
-  printf("Error, line %u: ", lex_line_num()); \
+  printf("Error, line %u: ", lLineNum()); \
+  printf(__VA_ARGS__); \
+  printf("\n"); \
+  exit(1); \
+}
+
+#define ERROR_LN(LN, ...) { \
+  printf("Error, line %u: ", LN); \
   printf(__VA_ARGS__); \
   printf("\n"); \
   exit(1); \
@@ -87,26 +94,25 @@ typedef enum {
 } ast_node_type_t;
 
 typedef struct {
-  const char *start;
-  const char *end;
+  const char*  start;
+  const char*  end;
   token_type_t type;
-  uint32_t line;
+  uint32_t     line;
 } token_t;
 
 typedef struct {
   const char *start;
   const char *end;
   const char *ptr;
-  const char *line_start;
-  uint32_t line_num;
+  const char *lineStart;
+  uint32_t    lineNum;
 } lex_t;
 
 typedef struct ast_node_s ast_node_t, *ast_node_p;
 
 typedef struct {
   ast_node_p exprStack[1024];
-  size_t exprStackHead;
-
+  size_t     exprStackHead;
   ast_node_p astRoot;
 } parser_t;
 
@@ -124,99 +130,102 @@ typedef struct ast_node_s {
     } root;
 
     struct {
-      token_t type;
-      token_t ident;
+      token_t    type;
+      token_t    ident;
       ast_node_p args;
       ast_node_p body;
-    } decl_func;
+    } declFunc;
 
     struct {
-      token_t type;
-      token_t ident;
+      token_t    type;
+      token_t    ident;
       ast_node_p expr;
-    } decl_var;
-
-    struct {
-      ast_node_p expr;
-    } stmt_expr;
+      uint32_t   indir;  // indirection level
+    } declVar;
 
     struct {
       ast_node_p expr;
-    } stmt_return;
+    } stmtExpr;
+
+    struct {
+      ast_node_p expr;
+    } stmtReturn;
 
     struct {
       ast_node_p stmt;
-    } stmt_compound;
+    } stmtCompound;
 
     struct {
       ast_node_p expr;
-      ast_node_p is_true;
-      ast_node_p is_false;
-    } stmt_if;
-
-    struct {
-      ast_node_p expr;
-      ast_node_p body;
-    } stmt_while;
+      ast_node_p isTrue;
+      ast_node_p isFalse;
+    } stmtIf;
 
     struct {
       ast_node_p expr;
       ast_node_p body;
-    } stmt_do;
+    } stmtWhile;
+
+    struct {
+      ast_node_p expr;
+      ast_node_p body;
+    } stmtDo;
 
     struct {
       ast_node_p init;
       ast_node_p cond;
       ast_node_p update;
       ast_node_p body;
-    } stmt_for;
+    } stmtFor;
 
     struct {
       token_t token;
-    } expr_ident;
+    } exprIdent;
 
     struct {
       token_t token;
-    } expr_int_lit;
+    } exprIntLit;
 
     struct {
-      token_t op;
+      token_t    op;
       ast_node_p lhs;
       ast_node_p rhs;
-    } expr_bin_op;
+    } exprBinOp;
 
     struct {
-      token_t op;
+      token_t    op;
       ast_node_p rhs;
-    } expr_unary_op;
+    } exprUnaryOp;
 
     struct {
-      token_t ident;
+      token_t    ident;
       ast_node_p arg;
-    } expr_call;
+    } exprCall;
   };
 
 } ast_node_t;
 
-const char *tok_name(token_t *t);
-const char* tok_type_name(token_type_t type);
-bool tok_is_type(token_t *t);
-bool tok_is_operator(token_t *t);
-bool tok_is(token_t *t, token_type_t type);
-int tok_prec(token_t *t);
-void tok_print(token_t *t);
 
-bool lex_init(const char *file);
-void lex_pop(token_t *out);
-void lex_peek(token_t *out);
-void lex_expect(token_type_t type);
-bool lex_found(token_type_t type, token_t *out);
-uint32_t lex_line_num(void);
+const char* tTypeName  (token_type_t type);
+const char *tName      (const token_t *t);
+bool        tIsType    (const token_t *t);
+bool        tIsOperator(const token_t *t);
+bool        tIs        (const token_t *t, token_type_t type);
+int         tPrec      (const token_t *t);
+bool        tEqual     (const token_t* a, const token_t* b);
+int         tSize      (const token_t* t);
 
-ast_node_p parse(void);
+bool        lInit      (const char *file);
+void        lPop       (token_t *out);
+void        lPeek      (token_t *out);
+void        lExpect    (token_type_t type);
+bool        lFound     (token_type_t type, token_t *out);
+uint32_t    lLineNum   (void);
 
-ast_node_p ast_node_new(ast_node_type_t type);
-ast_node_p ast_node_insert(ast_node_p chain, ast_node_p to_insert);
-void ast_dump(ast_node_p n);
+ast_node_p  pParse     (void);
 
-void sema_check(ast_node_p n);
+ast_node_p  aNodeNew   (ast_node_type_t type);
+ast_node_p  aNodeInsert(ast_node_p chain, ast_node_p toInsert);
+void        aDump      (ast_node_p n);
+
+void        sCheck     (ast_node_p n);

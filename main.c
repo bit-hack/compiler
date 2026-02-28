@@ -7,18 +7,18 @@ int main(int argc, char **args) {
     return 0;
   }
 
-  if (!lex_init(args[1])) {
+  if (!lInit(args[1])) {
     return 1;
   }
 
-  ast_node_p n = parse();
+  ast_node_p n = pParse();
   if (!n) {
     return 1;
   }
 
-  sema_check(n);
+  sCheck(n);
 
-  ast_dump(n);
+  aDump(n);
 
   return 0;
 }

@@ -3,11 +3,11 @@
 
 static lex_t lex;
 
-uint32_t lex_line_num(void) {
-    return lex.line_num;
+uint32_t lLineNum(void) {
+  return lex.lineNum;
 }
 
-bool lex_init(const char *file) {
+bool lInit(const char *file) {
 
   FILE *fd = fopen(file, "rb");
   if (!fd) {
@@ -17,31 +17,34 @@ bool lex_init(const char *file) {
 
   // file size
   fseek(fd, 0, SEEK_END);
-  const long fd_size = ftell(fd);
+  const long fdSize = ftell(fd);
   fseek(fd, 0, SEEK_SET);
+  if (fdSize <= 0) {
+    return false;
+  }
 
   // read file data
-  char *src = malloc(fd_size + 1);
+  char *src = malloc(fdSize + 1);
   if (!src) {
     return false;
   }
-  fread(src, 1, fd_size, fd);
-  src[fd_size] = '\0';
+  fread(src, 1, fdSize, fd);
+  src[fdSize] = '\0';
 
   // close file handle
   fclose(fd);
 
   // init lexer
   lex.start = src;
-  lex.end = src + fd_size;
-  lex.line_num = 1;
-  lex.line_start = src;
+  lex.end = src + fdSize;
+  lex.lineNum = 1;
+  lex.lineStart = src;
   lex.ptr = src;
 
   return true;
 }
 
-static void lex_skip_whitespace(void) {
+static void lSkipWhitespace(void) {
 
   bool inComment = false;
 
@@ -50,8 +53,8 @@ static void lex_skip_whitespace(void) {
 
     // track newlines
     if (*p == '\n') {
-      lex.line_num++;
-      lex.line_start = (p + 1);
+      lex.lineNum++;
+      lex.lineStart = (p + 1);
     }
 
     // multi line comments
@@ -89,15 +92,15 @@ static void lex_skip_whitespace(void) {
   lex.ptr = p;
 }
 
-static bool lex_is_alpha(char c) {
+static bool lIsAlpha(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-static bool lex_is_numeric(char c) {
+static bool lIsNumeric(char c) {
   return (c >= '0' && c <= '9');
 }
 
-static bool lex_match(const char *s) {
+static bool lMatch(const char *s) {
   const char *p = lex.ptr;
   for (;; ++p, ++s) {
     if (*s == '\0') {
@@ -110,16 +113,16 @@ static bool lex_match(const char *s) {
   }
 }
 
-static bool lex_identifier(token_t *out) {
+static bool lIdent(token_t *out) {
   const char *p = lex.ptr;
-  if (!lex_is_alpha(*p) && *p != '_') {
+  if (!lIsAlpha(*p) && *p != '_') {
     return false;
   }
   for (++p;;++p) {
-    if (lex_is_alpha(*p)) {
+    if (lIsAlpha(*p)) {
       continue;
     }
-    if (lex_is_numeric(*p)) {
+    if (lIsNumeric(*p)) {
       continue;
     }
     if (*p == '_') {
@@ -132,9 +135,9 @@ static bool lex_identifier(token_t *out) {
   return true;
 }
 
-static bool lex_int_literal(token_t *out) {
+static bool lIntLit(token_t *out) {
   const char *p = lex.ptr;
-  for (; lex_is_numeric(*p); ++p);
+  for (; lIsNumeric(*p); ++p);
   if (lex.ptr == p) {
     return false;
   }
@@ -143,17 +146,17 @@ static bool lex_int_literal(token_t *out) {
   return true;
 }
 
-void lex_pop(token_t *out) {
+void lPop(token_t *out) {
 
-  lex_skip_whitespace();
+  lSkipWhitespace();
 
   // prepare outgoing token
   out->type  = TOK_UNKNOWN;
-  out->line  = lex.line_num;
+  out->line  = lex.lineNum;
   out->start = lex.ptr;
   out->end   = NULL;
 
-#define TEST(FOR, TOK) if (lex_match(FOR)) { out->type = TOK; break; }
+#define TEST(FOR, TOK) if (lMatch(FOR)) { out->type = TOK; break; }
 
   // first stage simple classifier
   switch (*lex.ptr) {
@@ -214,10 +217,10 @@ void lex_pop(token_t *out) {
   // second stage classifier
   if (out->type == TOK_UNKNOWN) {
     do {
-      if (lex_identifier(out))  { out->type = TOK_IDENT;   break; }
-      if (lex_int_literal(out)) { out->type = TOK_INT_LIT; break; }
+      if (lIdent(out))  { out->type = TOK_IDENT;   break; }
+      if (lIntLit(out)) { out->type = TOK_INT_LIT; break; }
 
-      ERROR("unknown token on line %u", lex.line_num);
+      ERROR("unknown token on line %u", lex.lineNum);
 
     } while (0);
   }
@@ -231,29 +234,29 @@ void lex_pop(token_t *out) {
   out->end = lex.ptr;
 }
 
-void lex_peek(token_t *out) {
+void lPeek(token_t *out) {
   const lex_t save = lex;
-  lex_pop(out);
+  lPop(out);
   lex = save;
 }
 
-void lex_expect(token_type_t type) {
+void lExpect(token_type_t type) {
   token_t t;
-  lex_pop(&t);
+  lPop(&t);
   if (t.type == type) {
     return;
   }
-  ERROR("expected %s token", tok_type_name(type));
+  ERROR("expected %s token", tTypeName(type));
 }
 
-bool lex_found(token_type_t type, token_t *out) {
+bool lFound(token_type_t type, token_t *out) {
 
   token_t temp;
   out = out ? out : &temp;
 
-  lex_peek(out);
+  lPeek(out);
   if (out->type == type) {
-    lex_pop(out);
+    lPop(out);
     return true;
   }
   return false;

@@ -1,7 +1,7 @@
 #include "defs.h"
 
 
-const char *tok_type_name(token_type_t type) {
+const char *tTypeName(token_type_t type) {
   switch (type) {
   case TOK_SEMICOLON:  return ";";
   case TOK_LPAREN:     return "(";
@@ -50,27 +50,29 @@ const char *tok_type_name(token_type_t type) {
   }
 }
 
-const char* tok_name(token_t* t) {
-  return tok_type_name(t->type);
+int tSize(const token_t* t) {
+  return (int)(t->end - t->start);
 }
 
-bool tok_is_type(token_t *t) {
+const char* tName(const token_t* t) {
+  return tTypeName(t->type);
+}
+
+bool tIsType(const token_t* t) {
   switch (t->type) {
   case TOK_VOID:
   case TOK_CHAR:
   case TOK_SHORT:
-  case TOK_INT:
-    return true;
-  default:
-    return false;
+  case TOK_INT:       return true;
+  default:            return false;
   }
 }
 
-bool tok_is(token_t *t, token_type_t type) {
+bool tIs(const token_t* t, token_type_t type) {
   return t->type == type;
 }
 
-int tok_prec(token_t *t) {
+int tPrec(const token_t* t) {
   switch (t->type) {
 //case TOK_COMMA:     return 1; <-- interferes with call arg parsing
   case TOK_ASSIGN:    return 2;
@@ -97,11 +99,26 @@ int tok_prec(token_t *t) {
   }
 }
 
-bool tok_is_operator(token_t *t) {
-  return tok_prec(t) > 0;
+bool tIsOperator(const token_t* t) {
+  return tPrec(t) > 0;
 }
 
-void tok_print(token_t *t) {
-  const size_t size = t->end - t->start;
-  printf("%.*s", (int)size, t->start);
+bool tEqual(const token_t* a, const token_t* b) {
+  const char* pa = a->start;
+  const char* pb = b->start;
+
+  // compare lengths
+  if ((a->end - a->start) != (b->end - b->start)) {
+    return false;
+  }
+
+  // compare chars
+  for (;; ++pa, ++pb) {
+    if (pa == a->end && pb == b->end) {
+      return true;
+    }
+    if (*pa != *pb) {
+      return false;
+    }
+  }
 }
