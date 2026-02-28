@@ -148,30 +148,43 @@ typedef struct ast_node_s {
     } stmtExpr;
 
     struct {
+      token_t    token;
       ast_node_p expr;
     } stmtReturn;
+
+    struct {
+      token_t    token;
+    } stmtBreak;
+
+    struct {
+      token_t    token;
+    } stmtContinue;
 
     struct {
       ast_node_p stmt;
     } stmtCompound;
 
     struct {
+      token_t    token;
       ast_node_p expr;
       ast_node_p isTrue;
       ast_node_p isFalse;
     } stmtIf;
 
     struct {
+      token_t    token;
       ast_node_p expr;
       ast_node_p body;
     } stmtWhile;
 
     struct {
+      token_t    token;
       ast_node_p expr;
       ast_node_p body;
     } stmtDo;
 
     struct {
+      token_t    token;
       ast_node_p init;
       ast_node_p cond;
       ast_node_p update;

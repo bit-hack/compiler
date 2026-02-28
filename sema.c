@@ -1,13 +1,13 @@
 #include "defs.h"
 
 
-// check shadowing?
-// check return in void function
-// check continue, break in loop
-// check call argument count
-// check call of void return type in expr
-// type propagation/checking?
-// lvalue rvalue assignment checking
+// TODO:
+// - check return in void function
+// - check continue, break in loop
+// - check call argument count
+// - check call of void return type in expr
+// - type propagation/checking?
+// - lvalue rvalue assignment checking
 
 
 struct {
@@ -15,6 +15,7 @@ struct {
   uint32_t    stackMax;
   uint32_t    stackHead;
 } sema;
+
 
 static void stackPush(ast_node_p node) {
   if (!sema.stack || sema.stackHead >= sema.stackMax) {
@@ -37,6 +38,75 @@ static void stackRestore(uint32_t head) {
 static void stackClear(void) {
   sema.stackHead = 0;
 }
+
+static bool stackEmpty(void) {
+  return sema.stackHead == 0;
+}
+
+
+//----------------------------------------------------------------------------
+// SemaCheckLoops
+//
+// Check break and continue are only in loops
+//----------------------------------------------------------------------------
+
+static void semaCheckLoops(ast_node_p n) {
+
+  uint32_t scope = 0;
+
+  for (; n; n = n->next) {
+
+    switch (n->type) {
+    case AST_ROOT:
+      semaCheckLoops(n->root.node);
+      break;
+    case AST_DECL_FUNC:
+      semaCheckLoops(n->declFunc.body);
+      break;
+    case AST_STMT_COMPOUND:
+      semaCheckLoops(n->stmtCompound.stmt);
+      break;
+    case AST_STMT_IF:
+      semaCheckLoops(n->stmtIf.isTrue);
+      semaCheckLoops(n->stmtIf.isFalse);
+      break;
+    case AST_STMT_WHILE:
+      scope = stackSave();
+      stackPush(n);
+      semaCheckLoops(n->stmtWhile.body);
+      stackRestore(scope);
+      break;
+    case AST_STMT_DO:
+      scope = stackSave();
+      stackPush(n);
+      semaCheckLoops(n->stmtDo.body);
+      stackRestore(scope);
+      break;
+    case AST_STMT_FOR:
+      scope = stackSave();
+      stackPush(n);
+      semaCheckLoops(n->stmtFor.body);
+      stackRestore(scope);
+      break;
+    case AST_STMT_BREAK:
+      if (stackEmpty()) {
+        ERROR_LN(n->stmtBreak.token.line, "Break statement outside of loop");
+      }
+      break;
+    case AST_STMT_CONTINUE:
+      if (stackEmpty()) {
+        ERROR_LN(n->stmtBreak.token.line, "Continue statement outside of loop");
+      }
+      break;
+    }
+  }
+}
+
+//----------------------------------------------------------------------------
+// SemaCheckDecls
+//
+// Check all identifiers have a declaration
+//----------------------------------------------------------------------------
 
 static void semaCheckDeclsDecl(token_t* t) {
   for (uint32_t i = 0; i < sema.stackHead; ++i) {
@@ -184,4 +254,7 @@ void semaCheckDecls(ast_node_p n) {
 
 void sCheck(ast_node_p n) {
   semaCheckDecls(n);
+
+  stackClear();
+  semaCheckLoops(n);
 }

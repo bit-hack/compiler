@@ -134,6 +134,7 @@ static ast_node_p pExpr(int minPrec) {
 static ast_node_p pStmtIf(void) {
 
   ast_node_p n = aNodeNew(AST_STMT_IF);
+  lPop(&n->stmtIf.token);
 
   // condition
   lExpect(TOK_LPAREN);
@@ -154,6 +155,7 @@ static ast_node_p pStmtIf(void) {
 static ast_node_p pStmtWhile(void) {
 
   ast_node_p n = aNodeNew(AST_STMT_WHILE);
+  lPop(&n->stmtWhile.token);
 
   // condition
   lExpect(TOK_LPAREN);
@@ -169,6 +171,7 @@ static ast_node_p pStmtWhile(void) {
 static ast_node_p pStmtReturn(void) {
 
   ast_node_p n = aNodeNew(AST_STMT_RETURN);
+  lPop(&n->stmtReturn.token);
 
   if (lFound(TOK_SEMICOLON, NULL)) {
     return n;
@@ -183,20 +186,25 @@ static ast_node_p pStmtReturn(void) {
 
 static ast_node_p pStmtBreak(void) {
 
+  ast_node_p n = aNodeNew(AST_STMT_BREAK);
+  lPop(&n->stmtBreak.token);
+
   lExpect(TOK_SEMICOLON);
-  return aNodeNew(AST_STMT_BREAK);
+  return n;
 }
 
 static ast_node_p pStmtContinue(void) {
 
+  ast_node_p n = aNodeNew(AST_STMT_CONTINUE);
+  lPop(&n->stmtContinue.token);
+
   lExpect(TOK_SEMICOLON);
-  return aNodeNew(AST_STMT_CONTINUE);
+  return n;
 }
 
 static ast_node_p pStmtLocalDecl(void) {
 
   ast_node_p n = aNodeNew(AST_DECL_VAR);
-
   lPop(&n->declVar.type);
   lPop(&n->declVar.ident);
 
@@ -223,6 +231,7 @@ static ast_node_p pStmtCompound(void) {
 static ast_node_p pStmtDo(void) {
 
   ast_node_p n = aNodeNew(AST_STMT_DO);
+  lPop(&n->stmtDo.token);
 
   AST_NODE_INSERT(n->stmtDo.body, pStmt());
 
@@ -238,6 +247,7 @@ static ast_node_p pStmtDo(void) {
 static ast_node_p pStmtFor(void) {
 
   ast_node_p n = aNodeNew(AST_STMT_FOR);
+  lPop(&n->stmtFor.token);
 
   lExpect(TOK_LPAREN);
   AST_NODE_INSERT(n->stmtFor.init, pExpr(/*minPrec=*/0));
@@ -280,18 +290,20 @@ static ast_node_p pStmt(void) {
   }
 
   if (tIs(&la, TOK_FOR)) {
-    lPop(&la);
     return pStmtFor();
   }
 
   if (tIs(&la, TOK_BREAK)) {
-    lPop(&la);
     return pStmtBreak();
   }
 
   if (tIs(&la, TOK_CONTINUE)) {
-    lPop(&la);
     return pStmtContinue();
+  }
+
+  // return statement
+  if (tIs(&la, TOK_RETURN)) {
+    return pStmtReturn();
   }
 
   // empty statement
@@ -304,12 +316,6 @@ static ast_node_p pStmt(void) {
   if (tIs(&la, TOK_LBRACE)) {
     lPop(&la);
     return pStmtCompound();
-  }
-
-  // return statement
-  if (tIs(&la, TOK_RETURN)) {
-    lPop(&la);
-    return pStmtReturn();
   }
 
   // fallback to trying to parse an expression
