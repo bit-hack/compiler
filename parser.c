@@ -284,19 +284,23 @@ static ast_node_p pStmt(void) {
     return pStmtWhile();
   }
 
+  // do loop
   if (tIs(&la, TOK_DO)) {
     lPop(&la);
     return pStmtDo();
   }
 
+  // for loop
   if (tIs(&la, TOK_FOR)) {
     return pStmtFor();
   }
 
+  // break statement
   if (tIs(&la, TOK_BREAK)) {
     return pStmtBreak();
   }
 
+  // continue statement
   if (tIs(&la, TOK_CONTINUE)) {
     return pStmtContinue();
   }
@@ -322,7 +326,6 @@ static ast_node_p pStmt(void) {
   ast_node_p expr = pExpr(/*minPrec=*/0);
   ast_node_p stmtExpr = aNodeNew(AST_STMT_EXPR);
   AST_NODE_INSERT(stmtExpr->stmtExpr.expr, stmtExpr);
-
   lExpect(TOK_SEMICOLON);
 
   return expr;
