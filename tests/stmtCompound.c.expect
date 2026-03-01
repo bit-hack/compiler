@@ -1,0 +1,11 @@
+AST_ROOT
+. AST_DECL_FUNC main, line:1
+. . AST_DECL_TYPE void, line:1
+. . AST_STMT_COMPOUND
+. . . AST_DECL_VAR i, line:3
+. . . . AST_DECL_TYPE int, line:3
+. . . . AST_EXPR_INT_LIT 0, line:3
+. . AST_STMT_COMPOUND
+. . . AST_DECL_VAR j, line:6
+. . . . AST_DECL_TYPE int, line:6
+. . . . AST_EXPR_INT_LIT 0, line:6

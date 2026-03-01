@@ -1,0 +1,10 @@
+AST_ROOT
+. AST_DECL_FUNC foo, line:1
+. . AST_DECL_TYPE int, line:1
+. . AST_DECL_VAR a, line:1
+. . . AST_DECL_TYPE int, line:1
+. . AST_STMT_RETURN, line:2
+. . . AST_EXPR_CALL foo, line:2
+. . . . AST_EXPR_BIN_OP +, line:2
+. . . . . AST_EXPR_IDENT a, line:2
+. . . . . AST_EXPR_INT_LIT 1, line:2
