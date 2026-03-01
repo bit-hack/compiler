@@ -1,0 +1,19 @@
+AST_ROOT
+. AST_DECL_FUNC foo, line:1
+. . AST_DECL_TYPE void, line:1
+. . AST_DECL_VAR a, line:1
+. . . AST_DECL_TYPE int, line:1
+. . AST_DECL_VAR b, line:1
+. . . AST_DECL_TYPE int, line:1
+. AST_DECL_FUNC main, line:3
+. . AST_DECL_TYPE void, line:3
+. . AST_DECL_VAR f, line:3
+. . . AST_DECL_TYPE int, line:3
+. . . AST_DECL_TYPE *, line:3
+. . AST_DECL_VAR c, line:4
+. . . AST_DECL_TYPE int, line:4
+. . AST_EXPR_CALL foo, line:5
+. . . AST_EXPR_CAST, line:0
+. . . . AST_DECL_TYPE int, line:5
+. . . . AST_EXPR_IDENT f, line:5
+. . . AST_EXPR_IDENT c, line:5

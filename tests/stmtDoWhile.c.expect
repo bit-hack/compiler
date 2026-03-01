@@ -1,0 +1,6 @@
+AST_ROOT
+. AST_DECL_FUNC main, line:1
+. . AST_DECL_TYPE void, line:1
+. . AST_STMT_DO, line:2
+. . . AST_STMT_COMPOUND
+. . . AST_EXPR_INT_LIT 0, line:4

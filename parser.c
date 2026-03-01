@@ -9,6 +9,7 @@
 
 static ast_node_p pExpr(int minPrec);
 static ast_node_p pStmt(void);
+static ast_node_p pDeclType(void);
 
 static parser_t parser;
 
@@ -36,49 +37,63 @@ static ast_node_p pExprCall(token_t *ident) {
 
     } while (lFound(TOK_COMMA, NULL));
   }
-  lExpect(TOK_RPAREN);
+  lExpect(TOK_RPAREN, NULL);
 
   return n;
 }
 
 static ast_node_p pExprPrimary(void) {
 
-  token_t prim;
-  lPop(&prim);
+  token_t p;
+  lPop(&p);
 
   // unary operator
-  if (tIs(&prim, TOK_LOG_NOT) ||
-      tIs(&prim, TOK_BIT_NOT) ||
-      tIs(&prim, TOK_SUB)     ||
-      tIs(&prim, TOK_BIT_AND) ||
-      tIs(&prim, TOK_MUL)) {
+  if (tIs(&p, TOK_LOG_NOT) ||
+      tIs(&p, TOK_BIT_NOT) ||
+      tIs(&p, TOK_SUB)     ||
+      tIs(&p, TOK_BIT_AND) ||
+      tIs(&p, TOK_MUL)) {
     ast_node_p n = aNodeNew(AST_EXPR_UNARY_OP);
-    n->exprUnaryOp.op = prim;
+    n->exprUnaryOp.op = p;
     n->exprUnaryOp.rhs = pExprPrimary();
     return n;
   }
 
-  // parenthesized expression
-  if (tIs(&prim, TOK_LPAREN)) {
+  // parenthesized expression or cast
+  if (tIs(&p, TOK_LPAREN)) {
+
+    // cast
+    ast_node_p c = pDeclType();
+    if (c) {
+      lExpect(TOK_RPAREN, NULL);
+      ast_node_p cast = aNodeNew(AST_EXPR_CAST);
+      cast->exprCast.type = c;
+      cast->exprCast.expr = pExprPrimary();
+      return cast;
+    }
+
+    // parenthesized expression
     ast_node_p n = pExpr(/*minPrec=*/0);
-    lExpect(TOK_RPAREN);
+    lExpect(TOK_RPAREN, NULL);
     return n;
   }
 
-  if (tIs(&prim, TOK_IDENT)) {
+  // identifier
+  if (tIs(&p, TOK_IDENT)) {
 
     if (lFound(TOK_LPAREN, NULL)) {
-      return pExprCall(&prim);
+      return pExprCall(&p);
     }
 
     ast_node_p n = aNodeNew(AST_EXPR_IDENT);
-    n->exprIdent.token = prim;
+    n->exprIdent.token = p;
     return n;
   }
 
-  if (tIs(&prim, TOK_INT_LIT)) {
+  // integer literal
+  if (tIs(&p, TOK_INT_LIT)) {
     ast_node_p n = aNodeNew(AST_EXPR_INT_LIT);
-    n->exprIntLit.token = prim;
+    n->exprIntLit.token = p;
     return n;
   }
 
@@ -137,9 +152,9 @@ static ast_node_p pStmtIf(void) {
   lPop(&n->stmtIf.token);
 
   // condition
-  lExpect(TOK_LPAREN);
+  lExpect(TOK_LPAREN, NULL);
   n->stmtIf.expr = pExpr(/*minPrec=*/0);
-  lExpect(TOK_RPAREN);
+  lExpect(TOK_RPAREN, NULL);
 
   // is true branch
   n->stmtIf.isTrue = pStmt();
@@ -158,9 +173,9 @@ static ast_node_p pStmtWhile(void) {
   lPop(&n->stmtWhile.token);
 
   // condition
-  lExpect(TOK_LPAREN);
+  lExpect(TOK_LPAREN, NULL);
   n->stmtWhile.expr = pExpr(/*minPrec=*/0);
-  lExpect(TOK_RPAREN);
+  lExpect(TOK_RPAREN, NULL);
   
   // statement
   n->stmtWhile.body = pStmt();
@@ -180,7 +195,7 @@ static ast_node_p pStmtReturn(void) {
   ast_node_p e = pExpr(/*minPrec=*/0);
   AST_NODE_INSERT(n->stmtReturn.expr, e);
 
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   return n;
 }
 
@@ -189,7 +204,7 @@ static ast_node_p pStmtBreak(void) {
   ast_node_p n = aNodeNew(AST_STMT_BREAK);
   lPop(&n->stmtBreak.token);
 
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   return n;
 }
 
@@ -198,21 +213,26 @@ static ast_node_p pStmtContinue(void) {
   ast_node_p n = aNodeNew(AST_STMT_CONTINUE);
   lPop(&n->stmtContinue.token);
 
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   return n;
 }
 
 static ast_node_p pStmtLocalDecl(void) {
 
   ast_node_p n = aNodeNew(AST_DECL_VAR);
-  lPop(&n->declVar.type);
+
+  n->declVar.type = pDeclType();
+  if (!n->declVar.type) {
+    ERROR("Type expected");
+  }
+
   lPop(&n->declVar.ident);
 
   if (lFound(TOK_ASSIGN, NULL)) {
     AST_NODE_INSERT(n->declVar.expr, pExpr(/*minPrec=*/0));
   }
 
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   return n;
 }
 
@@ -235,11 +255,11 @@ static ast_node_p pStmtDo(void) {
 
   AST_NODE_INSERT(n->stmtDo.body, pStmt());
 
-  lExpect(TOK_WHILE);
-  lExpect(TOK_LPAREN);
+  lExpect(TOK_WHILE, NULL);
+  lExpect(TOK_LPAREN, NULL);
   AST_NODE_INSERT(n->stmtDo.expr, pExpr(/*minPrec=*/0));
-  lExpect(TOK_RPAREN);
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_RPAREN, NULL);
+  lExpect(TOK_SEMICOLON, NULL);
 
   return n;
 }
@@ -249,13 +269,13 @@ static ast_node_p pStmtFor(void) {
   ast_node_p n = aNodeNew(AST_STMT_FOR);
   lPop(&n->stmtFor.token);
 
-  lExpect(TOK_LPAREN);
+  lExpect(TOK_LPAREN, NULL);
   AST_NODE_INSERT(n->stmtFor.init, pExpr(/*minPrec=*/0));
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   AST_NODE_INSERT(n->stmtFor.cond, pExpr(/*minPrec=*/0));
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
   AST_NODE_INSERT(n->stmtFor.update, pExpr(/*minPrec=*/0));
-  lExpect(TOK_RPAREN);
+  lExpect(TOK_RPAREN, NULL);
 
   AST_NODE_INSERT(n->stmtFor.body, pStmt());
 
@@ -274,19 +294,16 @@ static ast_node_p pStmt(void) {
 
   // if conditional
   if (tIs(&la, TOK_IF)) {
-    lPop(&la);
     return pStmtIf();
   }
 
   // while loop
   if (tIs(&la, TOK_WHILE)) {
-    lPop(&la);
     return pStmtWhile();
   }
 
   // do loop
   if (tIs(&la, TOK_DO)) {
-    lPop(&la);
     return pStmtDo();
   }
 
@@ -326,7 +343,7 @@ static ast_node_p pStmt(void) {
   ast_node_p expr = pExpr(/*minPrec=*/0);
   ast_node_p stmtExpr = aNodeNew(AST_STMT_EXPR);
   AST_NODE_INSERT(stmtExpr->stmtExpr.expr, stmtExpr);
-  lExpect(TOK_SEMICOLON);
+  lExpect(TOK_SEMICOLON, NULL);
 
   return expr;
 }
@@ -335,25 +352,26 @@ static void pFunc(ast_node_t *decl) {
 
   // parse arguments
   if (!lFound(TOK_RPAREN, NULL)) {
-    do {
+    if (!lFound(TOK_VOID, NULL)) {
+      do {
 
-      token_t type;
-      lPop(&type);
-      if (tIs(&type, TOK_VOID)) {
-        break;
-      }
+        ast_node_p type = pDeclType();
+        if (!type) {
+          ERROR("Type expected");
+        }
 
-      token_t ident;
-      lPop(&ident);
+        token_t ident;
+        lExpect(TOK_IDENT, &ident);
 
-      ast_node_p arg = aNodeNew(AST_DECL_VAR);
-      AST_NODE_INSERT(decl->declFunc.args, arg);
-      arg->declVar.type = type;
-      arg->declVar.ident = ident;
+        ast_node_p arg = aNodeNew(AST_DECL_VAR);
+        AST_NODE_INSERT(decl->declFunc.args, arg);
+        arg->declVar.type = type;
+        arg->declVar.ident = ident;
 
-    } while (lFound(TOK_COMMA, NULL));
+      } while (lFound(TOK_COMMA, NULL));
+    }
+    lExpect(TOK_RPAREN, NULL);
   }
-  lExpect(TOK_RPAREN);
 
   if (lFound(TOK_LBRACE, NULL)) {
     // parse function body
@@ -364,8 +382,38 @@ static void pFunc(ast_node_t *decl) {
   }
   else {
     // function decl
-    lExpect(TOK_SEMICOLON);
+    lExpect(TOK_SEMICOLON, NULL);
   }
+}
+
+ast_node_p pDeclType(void) {
+
+  token_t t;
+  lPeek(&t);
+
+  ast_node_p out = NULL;
+
+  // parse types
+  while (tIsType(&t)) {
+    lPop(&t);
+    ast_node_p n = aNodeNew(AST_DECL_TYPE);
+    n->declType.token = t;
+    out = aNodeInsert(out, n);
+    lPeek(&t);
+  }
+
+  // parse any indirection
+  if (out) {
+    while (tIs(&t, TOK_MUL)) {
+      lPop(&t);
+      ast_node_p n = aNodeNew(AST_DECL_TYPE);
+      n->declType.token = t;
+      out = aNodeInsert(out, n);
+      lPeek(&t);
+    }
+  }
+
+  return out;
 }
 
 ast_node_p pParse(void) {
@@ -376,8 +424,7 @@ ast_node_p pParse(void) {
   token_t token;
   while (!lFound(TOK_EOF, &token)) {
 
-    token_t type;
-    lPop(&type);
+    ast_node_p type = pDeclType();
 
     token_t ident;
     lPop(&ident);
@@ -404,7 +451,7 @@ ast_node_p pParse(void) {
       v->declVar.expr = pExpr(/*minPrec*/0);
     }
     
-    lExpect(TOK_SEMICOLON);
+    lExpect(TOK_SEMICOLON, NULL);
   }
 
   return r;

@@ -122,3 +122,7 @@ bool tEqual(const token_t* a, const token_t* b) {
     }
   }
 }
+
+int tLineNum(const token_t* t) {
+  return t->line;
+}

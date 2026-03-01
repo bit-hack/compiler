@@ -75,6 +75,7 @@ typedef enum {
 
 typedef enum {
   AST_ROOT,
+  AST_DECL_TYPE,
   AST_DECL_VAR,
   AST_DECL_FUNC,
   AST_STMT_RETURN,
@@ -91,6 +92,7 @@ typedef enum {
   AST_EXPR_BIN_OP,
   AST_EXPR_UNARY_OP,
   AST_EXPR_CALL,
+  AST_EXPR_CAST,
 } ast_node_type_t;
 
 typedef struct {
@@ -130,17 +132,20 @@ typedef struct ast_node_s {
     } root;
 
     struct {
-      token_t    type;
+      token_t token;
+    } declType;
+
+    struct {
+      ast_node_p type;
       token_t    ident;
       ast_node_p args;
       ast_node_p body;
     } declFunc;
 
     struct {
-      token_t    type;
+      ast_node_p type;
       token_t    ident;
       ast_node_p expr;
-      uint32_t   indir;  // indirection level
     } declVar;
 
     struct {
@@ -214,6 +219,11 @@ typedef struct ast_node_s {
       token_t    ident;
       ast_node_p arg;
     } exprCall;
+
+    struct {
+      ast_node_p type;
+      ast_node_p expr;
+    } exprCast;
   };
 
 } ast_node_t;
@@ -227,11 +237,12 @@ bool        tIs        (const token_t *t, token_type_t type);
 int         tPrec      (const token_t *t);
 bool        tEqual     (const token_t* a, const token_t* b);
 int         tSize      (const token_t* t);
+int         tLineNum   (const token_t* t);
 
 bool        lInit      (const char *file);
 void        lPop       (token_t *out);
 void        lPeek      (token_t *out);
-void        lExpect    (token_type_t type);
+void        lExpect    (token_type_t type, token_t *out);
 bool        lFound     (token_type_t type, token_t *out);
 uint32_t    lLineNum   (void);
 

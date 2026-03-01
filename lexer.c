@@ -240,10 +240,11 @@ void lPeek(token_t *out) {
   lex = save;
 }
 
-void lExpect(token_type_t type) {
-  token_t t;
-  lPop(&t);
-  if (t.type == type) {
+void lExpect(token_type_t type, token_t *t) {
+  token_t q;
+  t = t ? t : &q;
+  lPop(t);
+  if (t->type == type) {
     return;
   }
   ERROR("expected %s token", tTypeName(type));

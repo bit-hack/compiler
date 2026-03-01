@@ -1,7 +1,7 @@
 void foo( int a, int b);
 
-void main(int f) {
+void main(int *f) {
   int c;
   //break;
-  foo(f, c);
+  foo((int)f, c);
 }

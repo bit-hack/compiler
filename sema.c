@@ -8,6 +8,7 @@
 // - check call of void return type in expr
 // - type propagation/checking?
 // - lvalue rvalue assignment checking
+// - check all types makes sense
 
 
 struct {
@@ -245,6 +246,9 @@ void semaCheckDecls(ast_node_p n) {
     case AST_EXPR_CALL:
       semaCheckDeclsUse(&n->exprCall.ident);
       semaCheckDecls(n->exprCall.arg);
+      break;
+    case AST_EXPR_CAST:
+      semaCheckDecls(n->exprCast.expr);
       break;
     default:
       assert(!"unreachable");

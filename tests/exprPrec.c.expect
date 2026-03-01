@@ -1,0 +1,11 @@
+AST_ROOT
+. AST_DECL_FUNC main, line:1
+. . AST_DECL_TYPE void, line:1
+. . AST_STMT_RETURN, line:2
+. . . AST_EXPR_BIN_OP +, line:2
+. . . . AST_EXPR_BIN_OP +, line:2
+. . . . . AST_EXPR_INT_LIT 1, line:2
+. . . . . AST_EXPR_BIN_OP *, line:2
+. . . . . . AST_EXPR_INT_LIT 2, line:2
+. . . . . . AST_EXPR_INT_LIT 3, line:2
+. . . . AST_EXPR_INT_LIT 4, line:2
