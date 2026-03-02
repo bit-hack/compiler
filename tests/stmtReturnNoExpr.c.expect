@@ -1,4 +1,6 @@
 AST_ROOT
 . AST_DECL_FUNC main, line:1
 . . AST_DECL_TYPE void, line:1
+. . AST_DECL_VAR <none>:
+. . . AST_DECL_TYPE void, line:1
 . . AST_STMT_RETURN, line:2

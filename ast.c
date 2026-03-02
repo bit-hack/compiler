@@ -40,10 +40,15 @@ static void aDumpNode(ast_node_p n, int level) {
       tLineNum(&n->declType.token));
     break;
   case AST_DECL_VAR:
-    printf("AST_DECL_VAR %.*s, line:%d\n",
-      tSize(&n->declVar.ident),
-      n->declVar.ident.start,
-      tLineNum(&n->declVar.ident));
+    if (n->declVar.ident.type == TOK_UNKNOWN) {
+      printf("AST_DECL_VAR <none>:\n");
+    }
+    else {
+      printf("AST_DECL_VAR %.*s, line:%d\n",
+        tSize(&n->declVar.ident),
+        n->declVar.ident.start,
+        tLineNum(&n->declVar.ident));
+    }
     break;
   case AST_DECL_FUNC:
     printf("AST_DECL_FUNC %.*s, line:%d\n",
@@ -79,9 +84,9 @@ static void aDumpNode(ast_node_p n, int level) {
     break;
   case AST_EXPR_IDENT:
     printf("AST_EXPR_IDENT %.*s, line:%d\n",
-      tSize(&n->exprIdent.token),
-      n->exprIdent.token.start,
-      tLineNum(&n->exprIdent.token));
+      tSize(&n->exprIdent.ident),
+      n->exprIdent.ident.start,
+      tLineNum(&n->exprIdent.ident));
     break;
   case AST_EXPR_INT_LIT:
     printf("AST_EXPR_INT_LIT %.*s, line:%d\n",

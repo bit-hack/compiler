@@ -2,7 +2,16 @@ import os
 import subprocess
 
 
-DRIVER = 'build/debug/compiler.exe'
+def findDriver():
+    winPath = 'build/debug/compiler.exe'
+    lnxPath = './compiler'
+    if os.path.exists(winPath):
+        return winPath
+    if os.path.exists(lnxPath):
+        return lnxPath
+    return 'unknown'
+
+DRIVER = findDriver()
 
 def compare(out, path):
 
@@ -11,7 +20,7 @@ def compare(out, path):
             lines = fd.readlines()
     except FileNotFoundError:
         print('{} not found'.format(path))
-        with open(path + '_', 'wb') as fd:
+        with open(path + '', 'wb') as fd:
             fd.write(out)
         return False
 
@@ -26,6 +35,7 @@ def compare(out, path):
         out = out[1:]
     return True
 
+
 def run_test(path):
     try:
         proc = subprocess.Popen(
@@ -39,8 +49,10 @@ def run_test(path):
     except OSError as e:
         print('failed to execute {} {}'.format(DRIVER, path))
         print(e)
+        return
 
     return compare(out, path + '.expect')
+
 
 def main():
     root = 'tests'

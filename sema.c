@@ -11,37 +11,46 @@
 // - check all types makes sense
 
 
-struct {
+typedef struct {
   ast_node_p* stack;
-  uint32_t    stackMax;
-  uint32_t    stackHead;
+  uint32_t    max;
+  uint32_t    head;
+} ast_stack_t;
+
+struct {
+  ast_stack_t stack;
+  ast_stack_t hist;
 } sema;
 
-
-static void stackPush(ast_node_p node) {
-  if (!sema.stack || sema.stackHead >= sema.stackMax) {
-    sema.stackMax += 128;
-    ast_node_p *alloc = realloc(sema.stack, sema.stackMax * sizeof(ast_node_p));
+static void stackPush(ast_stack_t *stack, ast_node_p node) {
+  if (!stack->stack || stack->head >= stack->max) {
+    stack->max += 128;
+    ast_node_p *alloc = realloc(stack->stack, stack->max * sizeof(ast_node_p));
     assert(alloc);
-    sema.stack = alloc;
+    stack->stack = alloc;
   }
-  sema.stack[sema.stackHead++] = node;
+  stack->stack[stack->head++] = node;
 }
 
-static uint32_t stackSave(void) {
-  return sema.stackHead;
+static void stackPop(ast_stack_t *stack) {
+  assert(stack->head);
+  --stack->head;
 }
 
-static void stackRestore(uint32_t head) {
-  sema.stackHead = head;
+static uint32_t stackSave(ast_stack_t *stack) {
+  return stack->head;
 }
 
-static void stackClear(void) {
-  sema.stackHead = 0;
+static void stackRestore(ast_stack_t *stack, uint32_t head) {
+  stack->head = head;
 }
 
-static bool stackEmpty(void) {
-  return sema.stackHead == 0;
+static void stackClear(ast_stack_t *stack) {
+  stack->head = 0;
+}
+
+static bool stackEmpty(ast_stack_t *stack) {
+  return stack->head == 0;
 }
 
 
@@ -52,6 +61,8 @@ static bool stackEmpty(void) {
 //----------------------------------------------------------------------------
 
 static void semaCheckLoops(ast_node_p n) {
+
+  ast_stack_t *stack = &sema.stack;
 
   uint32_t scope = 0;
 
@@ -72,30 +83,30 @@ static void semaCheckLoops(ast_node_p n) {
       semaCheckLoops(n->stmtIf.isFalse);
       break;
     case AST_STMT_WHILE:
-      scope = stackSave();
-      stackPush(n);
+      scope = stackSave(stack);
+      stackPush(stack, n);
       semaCheckLoops(n->stmtWhile.body);
-      stackRestore(scope);
+      stackRestore(stack, scope);
       break;
     case AST_STMT_DO:
-      scope = stackSave();
-      stackPush(n);
+      scope = stackSave(stack);
+      stackPush(stack, n);
       semaCheckLoops(n->stmtDo.body);
-      stackRestore(scope);
+      stackRestore(stack, scope);
       break;
     case AST_STMT_FOR:
-      scope = stackSave();
-      stackPush(n);
+      scope = stackSave(stack);
+      stackPush(stack, n);
       semaCheckLoops(n->stmtFor.body);
-      stackRestore(scope);
+      stackRestore(stack, scope);
       break;
     case AST_STMT_BREAK:
-      if (stackEmpty()) {
+      if (stackEmpty(stack)) {
         ERROR_LN(n->stmtBreak.token.line, "Break statement outside of loop");
       }
       break;
     case AST_STMT_CONTINUE:
-      if (stackEmpty()) {
+      if (stackEmpty(stack)) {
         ERROR_LN(n->stmtBreak.token.line, "Continue statement outside of loop");
       }
       break;
@@ -104,25 +115,39 @@ static void semaCheckLoops(ast_node_p n) {
 }
 
 //----------------------------------------------------------------------------
-// SemaCheckDecls
-//
-// Check all identifiers have a declaration
+// SemaCheckTypes
 //----------------------------------------------------------------------------
 
-static void semaCheckDeclsDecl(token_t* t) {
-  for (uint32_t i = 0; i < sema.stackHead; ++i) {
-    ast_node_p n = sema.stack[i];
+static void semaCheckFuncReturnType(ast_node_p t) {
+
+  if (!t) {
+    // t is a void type
+    return;
+  }
+  
+}
+
+static void semaCheckDeclVarType(ast_node_p t) {
+
+  // plain void is not allowed (void*) is
+
+}
+
+static void semaCheckTypesDecl(ast_node_p n, token_t* t) {
+
+  for (uint32_t i = 0; i < sema.stack.head; ++i) {
+    ast_node_p d = sema.stack.stack[i];
     bool error = false;
-    switch (n->type) {
+    switch (d->type) {
     case AST_DECL_FUNC:
-      if (!n->declFunc.body) {
+      if (!d->declFunc.body) {
         // this is just a declaration not a definition
         break;
       }
-      error |= tEqual(&n->declFunc.ident, t);
+      error |= tEqual(&d->declFunc.ident, t);
       break;
     case AST_DECL_VAR:
-      error |= tEqual(&n->declVar.ident, t);
+      error |= tEqual(&d->declVar.ident, t);
       break;
     }
     if (error) {
@@ -133,17 +158,21 @@ static void semaCheckDeclsDecl(token_t* t) {
   }
 }
 
-static void semaCheckDeclsUse(token_t* t) {
-  for (uint32_t i = 0; i < sema.stackHead; ++i) {
-    ast_node_p n = sema.stack[i];
-    switch (n->type) {
+static void semaCheckTypesUse(ast_node_p n, token_t* t) {
+  for (uint32_t i = 0; i < sema.stack.head; ++i) {
+    ast_node_p d = sema.stack.stack[i];
+    switch (d->type) {
     case AST_DECL_FUNC:
-      if (tEqual(&n->declFunc.ident, t)) {
+      if (tEqual(&d->declFunc.ident, t)) {
+        n->decorate.type = d;
+        n->decorate.lvalue = false;
         return;
       }
       break;
     case AST_DECL_VAR:
-      if (tEqual(&n->declVar.ident, t)) {
+      if (tEqual(&d->declVar.ident, t)) {
+        n->decorate.type = d;
+        n->decorate.lvalue = true;
         return;
       }
       break;
@@ -154,111 +183,164 @@ static void semaCheckDeclsUse(token_t* t) {
     "'%.*s' not declared", (int)(t->end - t->start), t->start);
 }
 
-void semaCheckDecls(ast_node_p n) {
+static void semaCheckTypesPropagage(ast_node_p n) {
 
+  switch (n->type) {
+  case AST_EXPR_BIN_OP:
+    // TODO
+  case AST_EXPR_UNARY_OP:
+    // TODO
+  case AST_EXPR_CALL:
+    // TODO
+  case AST_EXPR_CAST:
+    // TODO
+    break;
+  default:
+    assert(!"unreachable");
+  }
+}
+
+static void semaCheckReturnType(ast_node_p n) {
+  assert(n->type == AST_STMT_RETURN);
+
+  ast_node_p func = sema.hist.stack[0];
+
+  if (n->stmtReturn.expr) {
+    // TODO
+  }
+  else {
+    // TODO
+  }
+
+}
+
+static void semaCheckInLoop(ast_node_p n) {
+  // check we are inside of a loop
+}
+
+void semaCheckTypes(ast_node_p n) {
+
+  stackPush(&sema.hist, n);
+
+  ast_stack_t *stack = &sema.stack;
+  
   uint32_t scope = 0;
 
   for (; n; n = n->next) {
 
     switch (n->type) {
     case AST_ROOT:
-      semaCheckDecls(n->root.node);
+      semaCheckTypes(n->root.node);
       break;
     case AST_DECL_VAR:
-      semaCheckDeclsDecl(&n->declVar.ident);
-      stackPush(n);
+      semaCheckDeclVarType(n->declVar.type);
+      // func args might not have a name...
+      if (tIs(&n->declVar.ident, TOK_IDENT)) {
+        semaCheckTypesDecl(n, &n->declVar.ident);
+        stackPush(stack, n);
+      }
       break;
     case AST_DECL_FUNC:
+      semaCheckFuncReturnType(n->declFunc.type);      // check return type
+      semaCheckTypesDecl(n, &n->declFunc.ident);      // check function name
+      stackPush(stack, n);                            // record function name
       {
-        semaCheckDeclsDecl(&n->declFunc.ident);
-        stackPush(n);
-        scope = stackSave();
-        semaCheckDecls(n->declFunc.args);
-        semaCheckDecls(n->declFunc.body);
-        stackRestore(scope);
+        scope = stackSave(stack);                     // enter scope
+        semaCheckTypes(n->declFunc.args);             // check args
+        semaCheckTypes(n->declFunc.body);             // walk body
+        stackRestore(stack, scope);                   // leave scope
       }
       break;
     case AST_STMT_RETURN:
-      semaCheckDecls(n->stmtReturn.expr);
+      semaCheckTypes(n->stmtReturn.expr);
+      semaCheckReturnType(n);
       break;
     case AST_STMT_EXPR:
-      semaCheckDecls(n->stmtExpr.expr);
+      semaCheckTypes(n->stmtExpr.expr);
       break;
     case AST_STMT_COMPOUND:
       {
-        scope = stackSave();
-        semaCheckDecls(n->stmtCompound.stmt);
-        stackRestore(scope);
+        scope = stackSave(stack);
+        semaCheckTypes(n->stmtCompound.stmt);
+        stackRestore(stack, scope);
       }
       break;
     case AST_STMT_IF:
-      semaCheckDecls(n->stmtIf.expr);
+      semaCheckTypes(n->stmtIf.expr);
       {
-        scope = stackSave();
-        semaCheckDecls(n->stmtIf.isTrue);
-        stackRestore(scope);
-        semaCheckDecls(n->stmtIf.isFalse);
-        stackRestore(scope);
+        scope = stackSave(stack);                     // enter scope
+        semaCheckTypes(n->stmtIf.isTrue);
+        stackRestore(stack, scope);                   // reset scope
+        semaCheckTypes(n->stmtIf.isFalse);
+        stackRestore(stack, scope);                   // leave scope
       }
       break;
     case AST_STMT_WHILE:
-      semaCheckDecls(n->stmtWhile.expr);
+      semaCheckTypes(n->stmtWhile.expr);
       {
-        scope = stackSave();
-        semaCheckDecls(n->stmtWhile.body);
-        stackRestore(scope);
+        scope = stackSave(stack);                     // enter scope
+        semaCheckTypes(n->stmtWhile.body);
+        stackRestore(stack, scope);                   // leave scope
       }
       break;
     case AST_STMT_BREAK:
+      semaCheckInLoop(n);
       break;
     case AST_STMT_CONTINUE:
+      semaCheckInLoop(n);
       break;
     case AST_STMT_DO:
       {
-        scope = stackSave();
-        semaCheckDecls(n->stmtDo.body);
-        stackRestore(scope);
+        scope = stackSave(stack);
+        semaCheckTypes(n->stmtDo.body);
+        stackRestore(stack, scope);
       }
-      semaCheckDecls(n->stmtDo.expr);
+      semaCheckTypes(n->stmtDo.expr);
       break;
     case AST_STMT_FOR:
-      semaCheckDecls(n->stmtFor.init);
-      semaCheckDecls(n->stmtFor.cond);
-      semaCheckDecls(n->stmtFor.update);
+      semaCheckTypes(n->stmtFor.init);
+      semaCheckTypes(n->stmtFor.cond);
+      semaCheckTypes(n->stmtFor.update);
       {
-        scope = stackSave();
-        semaCheckDecls(n->stmtFor.body);
-        stackRestore(scope);
+        scope = stackSave(stack);
+        semaCheckTypes(n->stmtFor.body);
+        stackRestore(stack, scope);
       }
       break;
     case AST_EXPR_IDENT:
-      semaCheckDeclsUse(&n->exprIdent.token);
+      semaCheckTypesUse(n, &n->exprIdent.ident);
       break;
     case AST_EXPR_INT_LIT:
       break;
     case AST_EXPR_BIN_OP:
-      semaCheckDecls(n->exprBinOp.lhs);
-      semaCheckDecls(n->exprBinOp.rhs);
+      semaCheckTypes(n->exprBinOp.lhs);
+      semaCheckTypes(n->exprBinOp.rhs);
+      semaCheckTypesPropagage(n);
       break;
     case AST_EXPR_UNARY_OP:
-      semaCheckDecls(n->exprUnaryOp.rhs);
+      semaCheckTypes(n->exprUnaryOp.rhs);
+      semaCheckTypesPropagage(n);
       break;
     case AST_EXPR_CALL:
-      semaCheckDeclsUse(&n->exprCall.ident);
-      semaCheckDecls(n->exprCall.arg);
+      semaCheckTypesUse(n, &n->exprCall.ident);
+      semaCheckTypes(n->exprCall.arg);
+      semaCheckTypesPropagage(n);
       break;
     case AST_EXPR_CAST:
-      semaCheckDecls(n->exprCast.expr);
+      semaCheckTypes(n->exprCast.expr);
+      semaCheckTypesPropagage(n);
       break;
     default:
       assert(!"unreachable");
     }
   }
+
+  stackPop(&sema.hist);
 }
 
 void sCheck(ast_node_p n) {
-  semaCheckDecls(n);
+  semaCheckTypes(n);
 
-  stackClear();
+  stackClear(&sema.stack);
   semaCheckLoops(n);
 }

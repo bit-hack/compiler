@@ -86,7 +86,7 @@ static ast_node_p pExprPrimary(void) {
     }
 
     ast_node_p n = aNodeNew(AST_EXPR_IDENT);
-    n->exprIdent.token = p;
+    n->exprIdent.ident = p;
     return n;
   }
 
@@ -352,24 +352,25 @@ static void pFunc(ast_node_t *decl) {
 
   // parse arguments
   if (!lFound(TOK_RPAREN, NULL)) {
-    if (!lFound(TOK_VOID, NULL)) {
       do {
 
+        ast_node_p arg = aNodeNew(AST_DECL_VAR);
+        AST_NODE_INSERT(decl->declFunc.args, arg);
+
+        // argument type
         ast_node_p type = pDeclType();
         if (!type) {
           ERROR("Type expected");
         }
-
-        token_t ident;
-        lExpect(TOK_IDENT, &ident);
-
-        ast_node_p arg = aNodeNew(AST_DECL_VAR);
-        AST_NODE_INSERT(decl->declFunc.args, arg);
         arg->declVar.type = type;
-        arg->declVar.ident = ident;
+
+        // argument name is optional
+        token_t ident;
+        if (lFound(TOK_IDENT, &ident)) {
+          arg->declVar.ident = ident;
+        }
 
       } while (lFound(TOK_COMMA, NULL));
-    }
     lExpect(TOK_RPAREN, NULL);
   }
 

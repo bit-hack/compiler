@@ -132,7 +132,7 @@ typedef struct ast_node_s {
     } root;
 
     struct {
-      token_t token;
+      token_t    token;
     } declType;
 
     struct {
@@ -159,10 +159,16 @@ typedef struct ast_node_s {
 
     struct {
       token_t    token;
+
+      // decorate
+      ast_node_p loop;
     } stmtBreak;
 
     struct {
       token_t    token;
+
+      // decorate
+      ast_node_p loop;
     } stmtContinue;
 
     struct {
@@ -197,11 +203,14 @@ typedef struct ast_node_s {
     } stmtFor;
 
     struct {
-      token_t token;
+      token_t    ident;
+
+      // decorate
+      ast_node_p decl;
     } exprIdent;
 
     struct {
-      token_t token;
+      token_t    token;
     } exprIntLit;
 
     struct {
@@ -218,6 +227,9 @@ typedef struct ast_node_s {
     struct {
       token_t    ident;
       ast_node_p arg;
+
+      // decorate
+      ast_node_p decl;
     } exprCall;
 
     struct {
@@ -225,6 +237,11 @@ typedef struct ast_node_s {
       ast_node_p expr;
     } exprCast;
   };
+
+  struct {
+    bool       lvalue;  // is an lvalue
+    ast_node_p type;    // data type for expression nodes
+  } decorate;
 
 } ast_node_t;
 
