@@ -1,0 +1,3 @@
+AST_ROOT
+. AST_DECL_VAR a, line:1
+. . AST_DECL_TYPE int, line:1

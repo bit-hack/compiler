@@ -36,8 +36,8 @@ static ast_node_p pExprCall(token_t *ident) {
       AST_NODE_INSERT(n->exprCall.arg, e);
 
     } while (lFound(TOK_COMMA, NULL));
+    lExpect(TOK_RPAREN, NULL);
   }
-  lExpect(TOK_RPAREN, NULL);
 
   return n;
 }
@@ -226,7 +226,7 @@ static ast_node_p pStmtLocalDecl(void) {
     ERROR("Type expected");
   }
 
-  lPop(&n->declVar.ident);
+  lExpect(TOK_IDENT, &n->declVar.ident);
 
   if (lFound(TOK_ASSIGN, NULL)) {
     AST_NODE_INSERT(n->declVar.expr, pExpr(/*minPrec=*/0));
@@ -428,7 +428,7 @@ ast_node_p pParse(void) {
     ast_node_p type = pDeclType();
 
     token_t ident;
-    lPop(&ident);
+    lExpect(TOK_IDENT, &ident);
 
     // function declaration
     if (lFound(TOK_LPAREN, NULL)) {

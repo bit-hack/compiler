@@ -1,0 +1,7 @@
+AST_ROOT
+. AST_DECL_FUNC main, line:1
+. . AST_DECL_TYPE void, line:1
+. . AST_DECL_VAR <none>:
+. . . AST_DECL_TYPE int, line:1
+. . AST_DECL_VAR <none>:
+. . . AST_DECL_TYPE char, line:1

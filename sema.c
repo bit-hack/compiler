@@ -158,22 +158,18 @@ static void semaCheckTypesDecl(ast_node_p n, token_t* t) {
   }
 }
 
-static void semaCheckTypesUse(ast_node_p n, token_t* t) {
+static ast_node_p semaCheckTypesUse(ast_node_p n, token_t* t) {
   for (uint32_t i = 0; i < sema.stack.head; ++i) {
     ast_node_p d = sema.stack.stack[i];
     switch (d->type) {
     case AST_DECL_FUNC:
       if (tEqual(&d->declFunc.ident, t)) {
-        n->decorate.type = d;
-        n->decorate.lvalue = false;
-        return;
+        return d;
       }
       break;
     case AST_DECL_VAR:
       if (tEqual(&d->declVar.ident, t)) {
-        n->decorate.type = d;
-        n->decorate.lvalue = true;
-        return;
+        return d;
       }
       break;
     }
@@ -181,6 +177,7 @@ static void semaCheckTypesUse(ast_node_p n, token_t* t) {
   ERROR_LN(
     t->line,
     "'%.*s' not declared", (int)(t->end - t->start), t->start);
+  return NULL;
 }
 
 static void semaCheckTypesPropagage(ast_node_p n) {

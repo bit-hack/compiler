@@ -1,0 +1,6 @@
+AST_ROOT
+. AST_DECL_FUNC foo, line:1
+. . AST_DECL_TYPE void, line:1
+. AST_DECL_FUNC main, line:4
+. . AST_DECL_TYPE void, line:4
+. . AST_EXPR_CALL foo, line:5

@@ -118,6 +118,16 @@ typedef struct {
   ast_node_p astRoot;
 } parser_t;
 
+typedef struct {
+  uint8_t width;
+  uint8_t ptrLevel;
+  bool    isVoid;
+  bool    isConst;
+  bool    isStatic;
+  bool    isSigned;
+  bool    isRvalue;
+} ast_type_t, *ast_type_p;
+
 typedef struct ast_node_s {
 
   ast_node_type_t type;
@@ -239,8 +249,7 @@ typedef struct ast_node_s {
   };
 
   struct {
-    bool       lvalue;  // is an lvalue
-    ast_node_p type;    // data type for expression nodes
+    ast_type_p type;
   } decorate;
 
 } ast_node_t;

@@ -26,11 +26,14 @@ def compare(out, path):
 
     out = out.decode('utf-8')
     out = out.splitlines()
+
     for l in lines:
+        if not out:
+            return False
         got = out[0].strip()
         expect = l.strip()
         if got != expect:
-            print('got:{} expected:{}'.format(got, expect))
+            print('{}:\n  got:{} expected:{}'.format(path, got, expect))
             return False
         out = out[1:]
     return True
@@ -58,10 +61,13 @@ def main():
     root = 'tests'
     tests = os.listdir(root)
     results = []
-    for test in filter(lambda f: os.path.splitext(f)[1] == '.c', tests):
-        r = run_test(os.path.join(root, test))
-        results += [ (test, r) ]
+    
+    for (dirpath, dirs, files) in os.walk('tests'):
+        for test in filter(lambda f: os.path.splitext(f)[1] == '.c', files):
+            test_path = os.path.join(dirpath, test)
+            r = run_test(test_path)
+            results += [ (test_path, r) ]
     for r in results:
-        print('{:<20} {}'.format(r[0], 'Pass' if r[1] else 'Fail'))
+        print('{:<40} {}'.format(r[0], 'Pass' if r[1] else 'Fail'))
 
 main()
